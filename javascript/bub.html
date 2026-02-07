@@ -1,0 +1,392 @@
+<html>
+
+  <head>
+    <style>
+      html, body {
+        margin: 0;       /* remove the default margin          */
+        height: 100%;    /* make the html,body fill the page   */
+      }
+      #viewport {
+        display: block;  /* make the canvas act like a block   */
+        width: 100%;     /* make the canvas fill its container */
+        height: 100%;
+      }
+    </style>
+  </head>
+
+  <body>
+    <canvas id="viewport"></canvas>
+  </body>
+
+  <script type="module">
+
+    // portions adapted from WebGPU Fundamentals
+    // https://webgpufundamentals.org
+
+    const FRAME_CYCLE = 750;
+    const MAX_SEQ_COUNT = 200;
+    const MAX_SEQ_LENGTH = 200;
+    const PARTICLE_SIZE = 3 / 540;  // fraction of viewport
+    const BORDER = 0.1;             // fraction of viewport
+    const BLEND_MODE = 'blend';     // 'add' or 'blend'
+    const TAU = 2 * Math.PI;
+    const R = TAU / 235.0;
+
+    async function text_from_url(url) {
+      var response;
+      try {
+        response = await fetch(url)
+      } catch(e) {
+        fail(`can't fetch ${url}`);
+        return null;
+      }
+      return await response.text();
+    }
+
+    function choose_blend_mode() {
+      // Choose blend mode.
+      if (BLEND_MODE == 'add') {
+
+        // "lighten" mode.
+        return {
+          color: {
+            operation: 'add',
+            srcFactor: 'one',
+            dstFactor: 'one',
+          },
+          alpha: {
+            operation: 'add',
+            srcFactor: 'one',
+            dstFactor: 'one',
+          },
+        };
+      } else if (BLEND_MODE == 'blend') {
+        // "blend" mode
+        return {
+          color: {
+            operation: 'add',
+            srcFactor: 'one',
+            dstFactor: 'one-minus-src-alpha',
+          },
+          alpha: {
+            operation: 'add',
+            srcFactor: 'one',
+            dstFactor: 'one-minus-src-alpha',
+          },
+        };
+      }
+      fail(`unknown blend mode ${BLEND_MODE}`)
+    }
+
+    async function main() {
+
+      const adapter = await navigator.gpu?.requestAdapter();
+      const device = await adapter?.requestDevice();
+      if (!device) {
+        fail('need a browser that support WebGPU');
+        return;
+      }
+
+      // Get a WebGPU context from the canvas and configure it
+      const canvas = document.querySelector('#viewport');
+
+      const context = canvas.getContext('webgpu');
+      const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
+      context.configure({
+          device,
+          format: presentationFormat,
+      });
+
+      // HTTP GET the shaders' source code.
+      const particle_code = await text_from_url('particles.wgsl');
+      const draw_code = await text_from_url('draw.wgsl');
+      
+      // Create shader modules
+      const particle_module = device.createShaderModule({
+        label: 'particle generation shader',
+        code: particle_code,
+      });
+      const draw_module = device.createShaderModule({
+        label: 'bubble drawing shaders',
+        code: draw_code,
+      });
+
+      const UVS_SIZE_ELEMENTS = MAX_SEQ_COUNT * MAX_SEQ_LENGTH;
+      const UVS_SIZE_WORDS = UVS_SIZE_ELEMENTS * 2;
+      const UVS_SIZE_BYTES = UVS_SIZE_WORDS * 4;
+
+      // Create the uv storage buffer
+      const uv_buffer = device.createBuffer({
+        label: 'uv storage',
+        size: UVS_SIZE_BYTES,
+        usage: GPUBufferUsage.STORAGE,
+      });
+
+      // Create the particle pass's uniforms' data structures
+      const PU_SEQ_COUNT_OFFSET = 0;
+      const PU_SEQ_LENGTH_OFFSET = 1;
+      const PU_T_OFFSET = 2;
+      const PU_R_OFFSET = 3;
+      const PU_SIZE_WORDS = 4;
+      const PU_SIZE_BYTES = PU_SIZE_WORDS * 4;
+      const particle_uniform_buffer = device.createBuffer({
+        label: 'particle pass uniforms',
+        size: PU_SIZE_BYTES,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+      const pu_values = new ArrayBuffer(PU_SIZE_BYTES);
+      const pu_as_f32 = new Float32Array(pu_values);
+      const pu_as_u32 = new Uint32Array(pu_values);
+
+      // Create the draw pass's uniforms' data structures
+      const DU_PSIZE_OFFSET = 0;        // particle_size: vec2f
+      const DU_SCALE_OFFSET = 2;        // scale: vec2f
+      const DU_UV_COUNT_OFFSET = 4;     // uv_count: vec2u
+      const DU_SEQ_COUNT_OFFSET = 4;    // seq_count: u32
+      const DU_SEQ_LENGTH_OFFSET = 5;   // seq_length: u32
+      const DU_SIZE_WORDS = 6;
+      const DU_SIZE_BYTES = DU_SIZE_WORDS * 4;
+      const draw_uniform_buffer = device.createBuffer({
+        label: 'draw pass uniforms',
+        size: DU_SIZE_BYTES,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+      const draw_uniform_values = new ArrayBuffer(DU_SIZE_BYTES);
+      const du_as_f32 = new Float32Array(draw_uniform_values);
+      const du_as_u32 = new Uint32Array(draw_uniform_values);
+      // Set uniform values in render()
+
+      // Create bind groups.
+      const uv_rw_layout = device.createBindGroupLayout({
+        label: 'uv rw bind group layout',
+        entries: [{
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: {
+            type: 'storage',
+          },
+        }],
+      });
+      const uv_ro_layout = device.createBindGroupLayout({
+        label: 'uv ro bind group layout',
+        entries: [{
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: {
+            type: 'read-only-storage',
+          },
+        }],
+      });
+      const uv_rw_bind_group = device.createBindGroup({
+        label: 'uv rw bind group',
+        layout: uv_rw_layout,
+        entries: [
+          {
+            binding: 0,
+            resource: {
+              buffer: uv_buffer,
+            },
+          },
+        ],
+      });
+      const uv_ro_bind_group = device.createBindGroup({
+        label: 'uv ro bind group',
+        layout: uv_ro_layout,
+        entries: [
+          {
+            binding: 0,
+            resource: {
+              buffer: uv_buffer,
+            },
+          },
+        ],
+      });
+      const pu_layout = device.createBindGroupLayout({
+        label: 'pu bind group layout',
+        entries: [{
+          binding: 0,
+          visibility: GPUShaderStage.COMPUTE,
+          buffer: {
+            type: 'uniform',
+          },
+        }],
+      });
+      const particle_uniform_bind_group = device.createBindGroup({
+        label: 'particle pass uniform bind group',
+        layout: pu_layout,
+        entries: [
+          {
+            binding: 0,
+            resource: { buffer: particle_uniform_buffer },
+          },
+        ]
+      });
+      const du_layout = device.createBindGroupLayout({
+        label: 'du bind group layout',
+        entries: [{
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: {
+            type: 'uniform',
+          },
+        }],
+      });
+
+      const draw_uniform_bind_group = device.createBindGroup({
+        label: 'draw pass uniform bind group',
+        layout: du_layout,
+        entries: [
+          { binding: 0, resource: { buffer: draw_uniform_buffer } },
+        ],
+      });
+
+      // Create particle pipeline
+      const pp_layout = device.createPipelineLayout({
+        label: 'particle pipeline layout',
+        bindGroupLayouts: [
+          uv_rw_layout,
+          pu_layout,
+      ],
+      });
+      const particle_pipeline = device.createComputePipeline({
+        label: 'particle generation pipeline',
+        layout: pp_layout,
+        compute: {
+          module: particle_module,
+        }
+      });
+
+      // Create draw pipeline
+      const dp_layout = device.createPipelineLayout({
+        label: 'device pipeline layout',
+        bindGroupLayouts: [
+          uv_ro_layout,
+          du_layout,
+        ],
+      });
+
+      const draw_pipeline = device.createRenderPipeline({
+        label: 'bubble drawing pipeline',
+        layout: dp_layout,
+        vertex: {
+          module: draw_module,
+        },
+        fragment: {
+          module: draw_module,
+          targets: [{
+            format: presentationFormat,
+            blend: choose_blend_mode(),
+          }],
+        },
+      });
+
+      const particle_compute_pass_descriptor = {
+        label: 'particle computePass',
+        // layout: null,
+      };
+      const draw_render_pass_descriptor = {
+        label: 'bubble drawing renderPass',
+        colorAttachments: [
+        {
+          // view: <- to be filled out when we render
+          clearValue: [0.0, 0.0, 0.0, 1.0],
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+        ],
+      };
+  
+      var anim_id = null;
+      var frame = 0;
+      var scale, particle_size;
+
+      function render() {
+
+        // Set the particle pass's uniforms.
+        pu_as_u32[PU_SEQ_COUNT_OFFSET] = MAX_SEQ_COUNT;
+        pu_as_u32[PU_SEQ_LENGTH_OFFSET] = MAX_SEQ_LENGTH;
+        pu_as_f32[PU_T_OFFSET] = TAU * frame / FRAME_CYCLE;
+        pu_as_f32[PU_R_OFFSET] = R;
+        device.queue.writeBuffer(particle_uniform_buffer, 0, pu_values);
+
+        // Set the drawing pass's uniforms.
+        du_as_f32.set(particle_size, DU_PSIZE_OFFSET);
+        du_as_f32.set(scale, DU_SCALE_OFFSET);
+        du_as_u32[DU_SEQ_COUNT_OFFSET] = MAX_SEQ_COUNT;
+        du_as_u32[DU_SEQ_LENGTH_OFFSET] = MAX_SEQ_LENGTH;
+        device.queue.writeBuffer(draw_uniform_buffer, 0, draw_uniform_values);
+
+        // Get the current texture from the canvas context and
+        // set it as the texture to render to.
+        draw_render_pass_descriptor.colorAttachments[0].view =
+          context.getCurrentTexture();
+    
+        // make a command encoder to start encoding commands
+        const encoder = device.createCommandEncoder({ label: 'our encoder' });
+    
+        // Add particle compute pass to the encoder
+        const particle_pass = encoder.beginComputePass();
+        particle_pass.setPipeline(particle_pipeline);
+        particle_pass.setBindGroup(0, uv_rw_bind_group);
+        particle_pass.setBindGroup(1, particle_uniform_bind_group);
+        particle_pass.dispatchWorkgroups(MAX_SEQ_COUNT);
+        particle_pass.end();
+
+        // make a render pass encoder to encode render specific commands
+        const draw_pass = encoder.beginRenderPass(draw_render_pass_descriptor);
+        draw_pass.setPipeline(draw_pipeline);
+        draw_pass.setBindGroup(0, uv_ro_bind_group);
+        draw_pass.setBindGroup(1, draw_uniform_bind_group);
+        draw_pass.draw(6 * MAX_SEQ_COUNT * MAX_SEQ_LENGTH);
+        draw_pass.end();
+
+        const commandBuffer = encoder.finish();
+        device.queue.submit([commandBuffer]);
+      }
+    
+      let fcount = 0;
+      function animate() {
+        if ((fcount += 1) >= 0){
+          fcount -= 1;
+          render();
+          frame = (frame + 1) % FRAME_CYCLE;
+        }
+        anim_id = requestAnimationFrame(animate);
+      }
+
+      const observer = new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const canvas = entry.target;
+          const width = entry.devicePixelContentBoxSize[0].inlineSize;
+          const height = entry.devicePixelContentBoxSize[0].blockSize;
+          canvas.width = Math.max(1, Math.min(width, device.limits.maxTextureDimension2D));
+          canvas.height = Math.max(1, Math.min(height, device.limits.maxTextureDimension2D));
+          console.log('canvas size', canvas.height, canvas.width);
+          const s = (1 - BORDER) / 2;
+          if (width > height) {
+            scale = [s * height / width, s];
+            particle_size = [PARTICLE_SIZE * height / width, PARTICLE_SIZE];
+          } else {
+            scale = [s, s * width / height];
+            particle_size = [PARTICLE_SIZE, PARTICLE_SIZE * width / height];
+          }
+        }
+
+        // 
+        if (anim_id !== null) {
+          cancelAnimationFrame(anim_id);
+        }
+        anim_id = requestAnimationFrame(animate);
+      });
+      observer.observe(canvas);
+    }
+
+    function fail(msg) {
+      // eslint-disable-next-line no-alert
+      alert(msg);
+    }
+
+    main();
+
+  </script>
+</html>
