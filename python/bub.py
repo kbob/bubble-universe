@@ -186,7 +186,6 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    # resource=self._uv_buffer,
                     resource=wgpu.BufferBinding(
                         buffer=self._uv_buffer,
                     ),
@@ -199,7 +198,6 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    # resource=self._uv_buffer,
                     resource=wgpu.BufferBinding(
                         buffer=self._uv_buffer,
                     ),
@@ -212,7 +210,6 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    # resource=self._pu_buffer,
                     resource=wgpu.BufferBinding(
                         buffer=self._pu_buffer,
                     ),
@@ -225,7 +222,6 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    # resource=self._du_buffer,
                      resource=wgpu.BufferBinding(
                         buffer=self._du_buffer,
                     ),
@@ -254,12 +250,9 @@ class Bubbler:
         self._particle_pipeline = device.create_compute_pipeline(
             label='particle pipeline',
             layout=pp_layout,
-            compute={
-                'module': particle_shader,
-                # 'constants': {
-                #     # 'group_size_x': WORKGROUP_SIZE,
-                # },
-            },
+            compute=wgpu.ProgrammableStage(
+                module=particle_shader,
+            ),
         )
         self._drawing_pipeline = device.create_render_pipeline(
             label='drawing pipeline',
@@ -366,9 +359,6 @@ def run_app():
         size=CANVAS_SIZE,
         title='Bubble Universe',
         update_mode='continuous',
-        # update_mode='ondemand',
-        # min_fps = 0.5,
-        # max_fps = 32,
         max_fps=MAX_FPS,
         )
     context = canvas.get_wgpu_context()
