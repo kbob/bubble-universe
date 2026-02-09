@@ -24,10 +24,9 @@ from collections import namedtuple
 from dataclasses import dataclass
 from functools import cache
 from inspect import get_annotations, isfunction, ismethod
-import re
+from typing import NamedTuple
 
 import numpy as np
-from wgpu import BufferUsage
 
 __all__ = [
     'f32',
@@ -50,13 +49,6 @@ __all__ = [
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Utilities
-
-def camel_to_snake(name):
-    return re.sub(r'(?!^)(?=[A-Z])', '_', name).lower()
-
-assert camel_to_snake('camelCaseName') == 'camel_case_name'
-assert camel_to_snake('PascalCaseName') == 'pascal_case_name'
-
 
 class _classproperty:
     def __init__(self, f):
@@ -221,10 +213,13 @@ del v
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Uniforms
 
-class _FieldInfo(namedtuple('_FieldInfo', 'name offset bytes align')):
-    pass
+class _FieldInfo(NamedTuple):
+    name: str
+    offset: int
+    bytes: int
+    align: int
 
-class _UniformMeta(type):
+class _UniformsMeta(type):
 
     def __new__(cls, *args, **kwargs):
         """Create a Uniforms class.  Give it dataclass behavior."""
@@ -259,10 +254,10 @@ class _UniformMeta(type):
         r = super().__init__(name, bases, namespace, **kwargs)
         return r
 
-class Uniforms(metaclass=_UniformMeta):
+class Uniforms(metaclass=_UniformsMeta):
 
     """An abstract class that allows easy definition of uniform buffers.
-    
+
     Example:
 
         class MyUniforms(Uniforms):
@@ -285,7 +280,7 @@ class Uniforms(metaclass=_UniformMeta):
       - Fields must be annoated as WGSL types (scalars and vectors)
       - Fields can only contain the declared types; values are coerced
         to the right type on initialization and assignment
-    
+
     Uniforms subclasses have the same bytes and dtypes properties
     described above.
 
@@ -334,7 +329,7 @@ class Uniforms(metaclass=_UniformMeta):
 
         # ugly hack: if setting a vector, unpack its args
         def cast(name, value):
-            anno = annotations[name]            
+            anno = annotations[name]
             if hasattr(anno, 'scalar_type'):
                 return anno(*value)
             return anno(value)
@@ -386,21 +381,6 @@ class Uniforms(metaclass=_UniformMeta):
             end = f.offset + f.bytes
         return dt
 
-    @classmethod
-    def create_buffer(cls, device, **kwargs):
-        """Tell wgpu to create a suitable uniform buffer
-
-            Keyword arguments:
-              label -- wgpu buffer label (default: 'class_name buffer')
-              usage -- wgpu bufer usage (default: UNIFORM | COPY_DST)
-        """
-
-        kwargs.setdefault('label', f'{camel_to_snake(cls.__name__)} buffer')
-        kwargs.setdefault('size', cls.bytes)
-        kwargs.setdefault('usage', BufferUsage.UNIFORM | BufferUsage.COPY_DST)
-
-        return device.create_buffer(**kwargs)
-
     def as_data(self):
         """Return a data object with GPU-compatible binary layout."""
 
@@ -408,16 +388,6 @@ class Uniforms(metaclass=_UniformMeta):
         for info in self._field_info:
             data[info.name] = getattr(self, info.name)
         return data
-
-        # Build a dtype
-        # Allocate a memory using the dtype
-        # fill with zeroes
-        # offset = 0
-        # for a in annotations:
-        #   copy a.bytes bytes in at offset
-        #   offset += a.align
-
-        # What's the memory?  
 
 # Uniforms unit tests
 

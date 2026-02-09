@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from math import sin, cos, tau
 import os.path
+import re
 
 import wgpu
 from rendercanvas.auto import RenderCanvas, loop
@@ -53,6 +54,12 @@ class DrawingUniforms(Uniforms):
     seq_length: u32 = Defaults.SEQ_LENGTH
 
 
+def camel_to_snake(name):
+    return re.sub(r'(?!^)(?=[A-Z])', '_', name).lower()
+
+assert camel_to_snake('camelCaseName') == 'camel_case_name'
+assert camel_to_snake('PascalCaseName') == 'pascal_case_name'
+
 def read_shader(filename):
     """ return contents of a file in the shaders directory """
     up = os.path.dirname
@@ -65,6 +72,13 @@ def create_shader_from_file(device, filename, **kwargs):
     source = read_shader(filename)
     return device.create_shader_module(
         label=filename, code=read_shader(filename), **kwargs)
+
+def create_uniform_buffer(device, uniforms_type):
+    return device.create_buffer(
+        label=f'{camel_to_snake(uniforms_type.__name__)}',
+        size=uniforms_type.bytes,
+        usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST,
+    )
 
 def choose_blend_mode():
     if BLEND_MODE == 'add':
@@ -100,7 +114,7 @@ class Bubbler:
 
     def __init__(self):
         self._time = 0
-    
+
     def inc_time(self, dt):
         assert -tau < dt < tau
         self._time += dt
@@ -124,8 +138,10 @@ class Bubbler:
             usage=wgpu.BufferUsage.STORAGE,
             )
 
-        self._pu_buffer = ParticleUniforms.create_buffer(device)
-        self._du_buffer = DrawingUniforms.create_buffer(device)
+        # self._pu_buffer = ParticleUniforms.create_buffer(device)
+        # self._du_buffer = DrawingUniforms.create_buffer(device)
+        self._pu_buffer = create_uniform_buffer(device, ParticleUniforms)
+        self._du_buffer = create_uniform_buffer(device, DrawingUniforms)
 
         # create bind group layouts
         uv_rw_layout = device.create_bind_group_layout(
@@ -298,7 +314,7 @@ class Bubbler:
             seq_count = parameters.seq_count,
             seq_length = parameters.seq_length,
             t=self._time,
-            r=parameters.r,    
+            r=parameters.r,
         )
         device.queue.write_buffer(self._pu_buffer, 0, pu_uniforms.as_data())
 
