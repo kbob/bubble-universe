@@ -34,12 +34,14 @@ passes and connect them together.
     connect_input(tonemapper, canvas, ...)
 
     render_graph = RenderGraph(
+        device,
         [
             particle_motion,
             drawer,
             tonemapper,
         ],
         ...)
+
 
 And then at draw_frame time, something like this.
 
@@ -125,39 +127,308 @@ bubble universe stuff
    drawer.py - Drawer, DrawerUniforms
 """
 
-from abc import ABC
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from functools import cache, reduce
+from inspect import get_annotations, isfunction
+import operator
 import os.path
+from typing import NamedTuple
 
+import numpy as np
 import wgpu
 
-from passes import ComputePass
-from wgsl_types import Uniforms
+import wgsl_types
+from wgsl_types import *
+del Uniforms                    # we define a better Uniforms
+
+
+class _classproperty:
+    def __init__(self, f):
+        self.f = f
+    def __get__(self, obj, owner):
+        return self.f(owner)
+
 
 class Resource(ABC):
 
     def __init__(self, name):
-        self.dymo = LabelMaker()
+        self.name = name
 
     @abstractmethod
-    def descriptor(self):
+    def resource_descriptor(self):
         ...
 
+    def make_label(self, tag):
+        return f'{self.name} {tag}'
 
-class StorageBuffer(Resource): ...
 
-    def __init__(self, name, shape):
+## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
+## StorageBuffer
+
+class StorageBuffer(Resource):
+
+    def __init__(self, name, type_, shape):
         super().__init__(name)
+        # print(f'StorageBuffer({name=}, {type_=}, {shape=})')
+        assert issubclass(type_, wgsl_types._WgslType)
+        self.type = type_
+        self.shape = shape
+        self.buffer = None
+
+    @property
+    def bytes(self):
+        def prod(iterable):
+            return reduce(operator.mul, iterable, 1)
+        return self.type.align * prod(self.shape)
+
+    def instantiate(self, device):
+        print(f'StorageBuffer {self.name} instantiate')
+        if self.buffer is None:
+            self.buffer = device.create_buffer(
+                label=self.make_label('storage buffer'),
+                size=self.bytes,
+                usage=wgpu.BufferUsage.STORAGE,
+            )
+        return self.buffer
+
+    def resource_descriptor(self):
+        assert self.buffer is not None
+        return wgpu.BufferBinding(
+            buffer=self.buffer,
+        )
 
 
-    # size
-    # write
-    # buffer reference
+## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
+## Uniforms
 
-# class Uniforms(Resource): ...
+# Bah.  I need to split the uniform concept into two separate classes.abs
+# Uniforms the automated data marshalling thing is one complete thing,
+# and Uniforms the GPU resource is another.  (Utadmt and UtGr for short.)
+#
+# Utgr should reference a Utadmt, and Utqr should be able to write a Utadmt
+# to a buffer.  Utadmt is a passive data container, it just has magic
+# conversion properties.
+#
+# But which one keeps the "Uniforms" name?
+#
+#   Qption: Utadmt is Uniforms, and Utgr is UniformBuffer.
+#
+#   Option: Utgr is Uniforms, and Utadmt 
 
-class Texture(Resource): ...
+# class _FieldInfo(NamedTuple):
+#     name: str
+#     offset: int
+#     bytes: int
+#     align: int
 
-class Sampler(Resource): ...
+# class _UniformsMeta(type):
+
+#     def __new__(cls, *args, **kwargs):
+#         """Create a Uniforms class.  Give it dataclass behavior."""
+#         cls_obj = super().__new__(cls, *args, **kwargs)
+
+#         # Specify kw_only, otherwise dataclass forces fields without
+#         # default values to the front of the struct.
+#         return dataclass(cls_obj, kw_only=True, repr=False)
+
+#     def __init__(self, name, bases, namespace, **kwargs):
+
+#         """Create a Uniforms class.  Verify that all annotated fields
+#            have a WGSL type.
+#         """
+#         annotations = get_annotations(self)
+#         for (f, t) in annotations.items():
+#             assert issubclass(t, wgsl_types._WgslType), \
+#                 f'uniform field {f!r} must be a WGSL type'
+
+#         for f in self.__dict__:
+#             if f.startswith('__'):
+#                 continue
+#             if isfunction(self.__dict__[f]):
+#                 continue
+#             if isinstance(self.__dict__[f], classmethod):
+#                 continue
+#             if isinstance(self.__dict__[f], _classproperty):
+#                 continue
+#             assert f in annotations, \
+#                 f'uniform field {f!r} must have a type annotation'
+
+#         r = super().__init__(name, bases, namespace, **kwargs)
+#         return r
+
+class UniformBuffer(Resource):
+
+    def __init__(self, name, data_class):
+        super().__init__(name)
+        self.data_class = data_class
+        self.buffer = None
+
+    # # XXX is this needed?
+    # @property
+    # def bytes(cls):
+    #     return self.data_class.bytes
+    #     # info = cls._field_info
+    #     # if info:
+    #     #     return info[-1].offset + info[-1].bytes
+    #     # else:
+    #     #     return 0
+
+    def instantiate(self, device):
+        print(f'instantiating {self.name}')
+        # import sys, traceback
+        # traceback.print_stack(file=sys.stdout)
+        # print('\n')
+        if self.buffer is None:
+            self.buffer = device.create_buffer(
+                label=self.make_label('buffer'),
+                size=self.data_class.bytes,
+                usage=wgpu.BufferUsage.UNIFORM | wgpu.BufferUsage.COPY_DST,
+            )
+        return self.buffer
+
+    def resource_descriptor(self):
+        assert self.buffer is not None
+        return wgpu.BufferBinding(
+            buffer=self.buffer,
+        )
+
+    # def __setattr__(self, name, value):
+    #     # set a field.  Coerce the new value to the field's type.
+
+    #     # print(f'{self.__class__.__name__}.__setattr__({name=}, {value=})')
+
+    #     annotations = get_annotations(self.__class__)
+    #     assert name in annotations, \
+    #         f'unknown field {name!r} in {self.__class__.__name__}'
+
+    #     # ugly hack: if setting a vector, unpack its args
+    #     def cast(name, value):
+    #         anno = annotations[name]
+    #         if hasattr(anno, 'scalar_type'):
+    #             return anno(*value)
+    #         return anno(value)
+
+    #     cast_value = cast(name, value)
+    #     super().__setattr__(name, cast_value)
+
+    # @_classproperty
+    # @cache
+    # def _field_info(cls):
+    #     info = []
+    #     offset = 0
+    #     align = None
+    #     for (fname, fclass) in get_annotations(cls).items():
+    #         bytes = fclass.bytes
+    #         align = fclass.align
+    #         offset += (align - offset) % align
+    #         info += [_FieldInfo(fname, offset, bytes, align)]
+    #         offset += bytes
+    #     return tuple(info)
+
+    # @_classproperty
+    # @cache
+    # def dtype(cls):
+    #     """Return a numpy dtype definition"""
+    #     annotations = get_annotations(cls)
+    #     info = cls._field_info
+    #     dt = []
+    #     end = 0
+    #     fillno = 1
+    #     for f in info:
+    #         if f.offset != end:
+    #             # insert filler
+    #             dt += [(f'_filler{fillno}', 'i1', (f.offset - end,))]
+    #             fillno += 1
+    #         f_dtype = annotations[f.name].dtype
+    #         if type(f_dtype) is not tuple:
+    #             f_dtype = (f_dtype, )
+    #         dt += [(f.name, ) + f_dtype]
+    #         end = f.offset + f.bytes
+    #     return dt
+
+    # def as_data(self):
+    #     """Return a data object with GPU-compatible binary layout."""
+
+    #     data = np.zeros((), dtype=self.dtype)
+    #     for info in self._field_info:
+    #         data[info.name] = getattr(self, info.name)
+    #     return data
+
+    @classmethod
+    def create_buffer(cls, device, **kwargs):
+        """Return a numpy dtype definition"""
+        annotations = get_annotations(cls)
+        info = cls._field_info
+        dt = []
+        end = 0
+        fillno = 1
+        for f in info:
+            if f.offset != end:
+                # insert filler
+                dt += [(f'_filler{fillno}', 'i1', (f.offset - end,))]
+                fillno += 1
+            f_dtype = annotations[f.name].dtype
+            if type(f_dtype) is not tuple:
+                f_dtype = (f_dtype, )
+            dt += [(f.name, ) + f_dtype]
+            end = f.offset + f.bytes
+        return dt
+
+# # Uniforms unit tests
+
+# class Test(Uniforms):
+#     index: u32 = 42
+#     ix2: u32 = 42 / 4
+#     p3: vec3u = (4.4, 3.3, 2.2)
+#     pt: vec4f = (1, 2, 3, 4.4)
+
+# test = Test()
+# assert test.index == 42
+# assert test.pt == (1, 2, 3, 4.4)
+# assert type(test.index) is u32
+# assert type(test.pt) is vec4f
+# assert test._field_info[0].offset == 0
+# assert Test._field_info[1].offset == 4
+# assert test._field_info[2].offset == 16
+# assert Test._field_info[3].offset == 32
+# assert test.bytes == 48
+# assert test.dtype == [
+#     ('index',    'u4'),
+#     ('ix2',      'u4'),
+#     ('_filler1', 'i1', (8, )),
+#     ('p3',       'u4', (3, )),
+#     ('_filler2', 'i1', (4, )),
+#     ('pt',       'f4', (4, ))
+#     ]
+
+# test = Test(pt=(5.5, 6.6, 7.7, 8.8))
+# assert test.index == 42
+# assert test.pt == (5.5, 6.6, 7.7, 8.8)
+# assert type(test.index) is u32
+# assert type(test.pt) is vec4f
+
+# test.index = 5.5
+# assert test.index == 5
+# assert test.pt == (5.5, 6.6, 7.7, 8.8)
+# assert type(test.index) is u32
+# assert type(test.pt) is vec4f
+
+# data = test.as_data()
+# assert np.all(data['p3'] == test.p3)
+
+# del Test, test
+
+
+## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
+## Texture
+
+class Texture(Resource):
+    ...
+
+class Sampler(Resource):
+    ...
+
 
 # class LabelMaker:
 #     def __init__(self, base):
