@@ -20,7 +20,6 @@
     The f16, bool, and matrix types aren't impemented (yet?)
 """
 
-from collections import namedtuple
 from dataclasses import dataclass
 from functools import cache
 from inspect import get_annotations, isfunction, ismethod

@@ -16,4 +16,3 @@ class Defaults:
     SPEED = 0.5                 # radians/sec
     R = tau / 235               # radians
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
-

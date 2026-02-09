@@ -1,32 +1,10 @@
 from abc import abstractmethod
-# from collections import namedtuple
 from enum import Enum
 import os.path
 from typing import NamedTuple
 
 import resources
 
-
-class LabelMaker:
-    def __init__(self, base):
-        self.base = base
-    def shader_label(self):
-        return f'{self.base} shader'
-    def bind_group_layout_label(self, group_name):
-        return f'{self.base} {group_name} bind group layout'
-    def bind_group_label(self, group_name):
-        return f'{self.base} {group_name} buffer'
-    def pipeline_layout_label(self):
-        return f'{self.base} pipeline layout'
-    def pipeline_label(self):
-        return f'{self.base} pipeline'
-    def compute_pass_descriptor_label(self):
-        return f'{self.base} compute pass descriptor'
-
-
-# class Binding(namedtuple('Binding', 'name resource access')):
-#     """A resource used by a pass"""
-#     ...
 
 class Access(Enum):
     RO = 'ro'
@@ -43,7 +21,6 @@ class Pass:
 
     def __init__(self, name):
         self.name = name
-        self.dymo = LabelMaker(name)
 
     @abstractmethod
     def instantiate(self):
@@ -52,6 +29,10 @@ class Pass:
     @abstractmethod
     def bindings(self):
         ...
+
+    def make_label(self, tag):
+        """naming: one of the two Karlton-hard CS problems"""
+        return f'{self.name} {tag}'
 
     def read_shader(self, filename):
         """return contents of a file in the shaders directory"""

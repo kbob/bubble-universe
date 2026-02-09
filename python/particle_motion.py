@@ -5,23 +5,21 @@ from passes import Binding, ComputePass, Access
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
-# make local to ParticleMotionPass?
-class ParticleMotionUniforms(Uniforms):
-    seq_count: u32 = Defaults.SEQ_COUNT
-    seq_length: u32 = Defaults.SEQ_LENGTH
-    t: f32 = 0
-    r: f32 = Defaults.R
 
 class ParticleMotionPass(ComputePass):
+
+    class _Uniforms(Uniforms):
+        seq_count: u32 = Defaults.SEQ_COUNT
+        seq_length: u32 = Defaults.SEQ_LENGTH
+        t: f32 = 0
+        r: f32 = Defaults.R
 
     def __init__(self, name='particles'):
         super().__init__(name)
         self.uvs = None
-        self.uniform_buffer = UniformBuffer('particle uniforms', ParticleMotionUniforms)
-#         self.uniform = ParticleMotionUniforms()
+        self.uniform_buffer = UniformBuffer('particle uniforms', self._Uniforms)
         self.shader = self.read_shader('particles.wgsl')
 
-    # XXX rename bindings to resources
     def bindings(self):
         assert self.uvs and self.uniform_buffer
         return [
@@ -40,12 +38,8 @@ class ParticleMotionPass(ComputePass):
             code=self.shader,
         )
 
-        # # not needed.  uniform_buffer is exported in bindings (resources)
-        # # and RenderGraph instantiates it.
-        # self.uniform_buffer.instantiate(device)
-
         uv_layout = device.create_bind_group_layout(
-            label=self.dymo.bind_group_layout_label('uv'),
+            label=self.make_label('uv bind group layout'),
             entries=[
                 wgpu.BindGroupLayoutEntry(
                     binding=0,
@@ -58,7 +52,7 @@ class ParticleMotionPass(ComputePass):
         )
 
         uniforms_layout = device.create_bind_group_layout(
-            label=self.dymo.bind_group_layout_label('uniforms'),
+            label=self.make_label('uniforms bind group layout'),
             entries=[
                 wgpu.BindGroupLayoutEntry(
                     binding=0,
@@ -71,7 +65,7 @@ class ParticleMotionPass(ComputePass):
         )
 
         self.uv_bind_group = device.create_bind_group(
-            label=self.dymo.bind_group_label('uv'),
+            label=self.make_label('uv bind group'),
             layout=uv_layout,
             entries=[
                 wgpu.BindGroupEntry(
@@ -82,7 +76,7 @@ class ParticleMotionPass(ComputePass):
         )
 
         self.uniforms_bind_group = device.create_bind_group(
-            label=self.dymo.bind_group_label('uniform'),
+            label=self.make_label('uniforms bind group'),
             layout=uniforms_layout,
             entries=[
                 wgpu.BindGroupEntry(
@@ -95,7 +89,7 @@ class ParticleMotionPass(ComputePass):
         )
 
         pipeline_layout=device.create_pipeline_layout(
-            label=self.dymo.pipeline_layout_label(),
+            label=self.make_label('pipeline layout'),
             bind_group_layouts=[
                 uv_layout,
                 uniforms_layout,
@@ -103,7 +97,7 @@ class ParticleMotionPass(ComputePass):
         )
 
         self.pipeline = device.create_compute_pipeline(
-            label=self.dymo.pipeline_label(),
+            label=self.make_label('pipeline'),
             layout=pipeline_layout,
             compute=wgpu.ProgrammableStage(
                 module=shader_module,
@@ -111,5 +105,5 @@ class ParticleMotionPass(ComputePass):
         )
 
         self.pass_descriptor = wgpu.ComputePassDescriptor(
-            label=self.dymo.compute_pass_descriptor_label(),
+            label=self.make_label('compute pass descriptor'),
         )

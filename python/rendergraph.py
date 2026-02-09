@@ -11,7 +11,6 @@ class RenderGraph:
         for pass_ in passes:
             for b in pass_.bindings():
                 resource = b.resource
-#                 print(f'RG.init: {resource = }')
                 assert resource, f"pass '{pass_.name}' is missing resource '{b.name}'"
                 if resource not in self.resources:
                     self.resources[resource] = resource.instantiate(device)
