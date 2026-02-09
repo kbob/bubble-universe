@@ -45,14 +45,12 @@ class ParticleUniforms(Uniforms):
     seq_length: u32 = Defaults.SEQ_LENGTH
     t: f32
     r: f32 = Defaults.R
-# print(f'{ParticleUniforms.dtype = }')
 
 class DrawingUniforms(Uniforms):
     particle_size: vec2f = (Defaults.PARTICLE_SIZE / CANVAS_SIZE[1], ) * 2
     scale: vec2f = (1, 1)
     seq_count: u32 = Defaults.SEQ_COUNT
     seq_length: u32 = Defaults.SEQ_LENGTH
-# print(f'{DrawingUniforms.dtype = }')
 
 
 def read_shader(filename):
@@ -286,8 +284,6 @@ class Bubbler:
 
     def draw_frame(self, parameters, output_texture):
         device = self._device
-        # print(dir(output_texture))
-        # print(f'texture {output_texture.width}x{output_texture.height}')
 
         def adjust_for_aspect(x):
             w, h = output_texture.width, output_texture.height
@@ -304,7 +300,6 @@ class Bubbler:
             t=self._time,
             r=parameters.r,    
         )
-        # print(f'{pu_uniforms = }')
         device.queue.write_buffer(self._pu_buffer, 0, pu_uniforms.as_data())
 
         # Set the drawing pass's uniforms
@@ -314,7 +309,6 @@ class Bubbler:
             seq_count=parameters.seq_count,
             seq_length=parameters.seq_length,
         )
-        # print(f'{du_uniforms = }')
         device.queue.write_buffer(self._du_buffer, 0, du_uniforms.as_data())
 
         # Create a command encoder
@@ -322,7 +316,6 @@ class Bubbler:
 
         # Add the particle compute pass to the encoder
         workgroup_count = (parameters.seq_count + WORKGROUP_SIZE - 1) // WORKGROUP_SIZE
-        # print(f'{workgroup_count = }')
         particle_pass = encoder.begin_compute_pass(label='particle pass')
         particle_pass.set_pipeline(self._particle_pipeline)
         particle_pass.set_bind_group(0, self._uv_rw_bind_group)
@@ -346,9 +339,6 @@ class Bubbler:
 
         command_buffer = encoder.finish()
         device.queue.submit([command_buffer])
-        # print(f'submitted, t={self._time:.3f}')
-        # if self._time > 4:
-        #     exit()
 
 
 def run_app():
