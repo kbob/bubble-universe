@@ -108,7 +108,7 @@ def choose_blend_mode():
             ),
         )
     else:
-        assert False, 'unknown BLEND_MODE of ${blend_mode!r}'
+        assert False, f'unknown BLEND_MODE of {BLEND_MODE!r}'
 
 class Bubbler:
 
@@ -136,10 +136,8 @@ class Bubbler:
             label='uv buffer',
             size=uv_bytes,
             usage=wgpu.BufferUsage.STORAGE,
-            )
+        )
 
-        # self._pu_buffer = ParticleUniforms.create_buffer(device)
-        # self._du_buffer = DrawingUniforms.create_buffer(device)
         self._pu_buffer = create_uniform_buffer(device, ParticleUniforms)
         self._du_buffer = create_uniform_buffer(device, DrawingUniforms)
 
@@ -200,9 +198,7 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    resource=wgpu.BufferBinding(
-                        buffer=self._uv_buffer,
-                    ),
+                    resource=self._uv_buffer,
                 ),
             ],
         )
@@ -212,9 +208,7 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    resource=wgpu.BufferBinding(
-                        buffer=self._uv_buffer,
-                    ),
+                    resource=self._uv_buffer,
                 ),
             ],
         )
@@ -224,9 +218,7 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                    resource=wgpu.BufferBinding(
-                        buffer=self._pu_buffer,
-                    ),
+                    resource=self._pu_buffer,
                 ),
             ],
         )
@@ -236,9 +228,7 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
-                     resource=wgpu.BufferBinding(
-                        buffer=self._du_buffer,
-                    ),
+                    resource=self._du_buffer,
                ),
             ],
         )
@@ -287,7 +277,7 @@ class Bubbler:
 
         # Partially create the drawing pass descriptor
         self._drawing_pass_desc = wgpu.RenderPassDescriptor(
-            label='drawing pass ',
+            label='drawing pass',
             color_attachments=[
                 wgpu.RenderPassColorAttachment(
                     clear_value=(0, 0, 0, 1),
@@ -320,7 +310,7 @@ class Bubbler:
 
         # Set the drawing pass's uniforms
         du_uniforms = DrawingUniforms(
-            particle_size=adjust_for_aspect(parameters.particle_size / 540),
+            particle_size=adjust_for_aspect(parameters.particle_size / CANVAS_SIZE[1]),
             scale=adjust_for_aspect((1 - BORDER) / 2),
             seq_count=parameters.seq_count,
             seq_length=parameters.seq_length,
@@ -370,6 +360,10 @@ def run_app():
     context = canvas.get_wgpu_context()
     preferred_format = context.get_preferred_format(adapter)
     context.configure(device=device, format=preferred_format)
+
+    # @canvas.add_event_handler('resize')
+    # def handle_event(event):
+    #     print(f'Event: {event["event_type"]!r}, size = {canvas.get_physical_size()}')
 
     bubbler = Bubbler()
     bubbler.init_graphics(device, preferred_format)
