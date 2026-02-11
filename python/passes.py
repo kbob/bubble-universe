@@ -30,6 +30,10 @@ class Pass:
     def bindings(self):
         ...
 
+    @abstractmethod
+    def execute(self, device, encoder):
+        ...
+
     def make_label(self, tag):
         """naming: one of the two Karlton-hard CS problems"""
         return f'{self.name} {tag}'
@@ -41,6 +45,10 @@ class Pass:
         with open(path) as f:
             return f.read()
 
+
+# I can refactor creation of shader, buffer, texture(?)
+# into Pass or RenderPass, I think.
+# 
 
 class ComputePass(Pass):
     ...

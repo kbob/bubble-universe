@@ -8,19 +8,32 @@ from wgsl_types import *
 
 class DrawingPass(RenderPass):
 
+
+    class _Parameters:
+        seq_count: int = Defaults.SEQ_COUNT
+        seq_length: int = Defaults.SEQ_LENGTH
+        particle_size: float = Defaults.PARTICLE_SIZE
+
     class _Uniforms(Uniforms):
         particle_size: vec2f = (Defaults.PARTICLE_SIZE / CANVAS_SIZE[1], ) * 2
         scale: vec2f = (1, 1)
         seq_count: u32 = Defaults.SEQ_COUNT
         seq_length: u32 = Defaults.SEQ_LENGTH
 
+
     def __init__(self, name='drawing'):
         super().__init__(name)
+        self._parameters = self._Parameters()
         self.uvs = None
         self.output = None
         self.uniform_buffer = UniformBuffer('drawing uniforms', self._Uniforms)
         self.shader_file = 'draw.wgsl'
         self.shader = self.read_shader(self.shader_file)
+
+    def update_parameters(self, seq_count, seq_length, particle_size):
+        self._parameters.seq_count = seq_count
+        self._parameters.seq_length = seq_length
+        self._parameters.particle_size = particle_size
 
     def bindings(self):
         assert self.uvs
@@ -91,9 +104,6 @@ class DrawingPass(RenderPass):
                 wgpu.BindGroupEntry(
                     binding=0,
                     resource=self.uniform_buffer.resource_descriptor(),
-                    # resource=wgpu.BufferBinding(
-                    #     buffer=self.uniform_buffer.resource_descriptor(),
-                    # ),
                 ),
             ],
         )
@@ -149,18 +159,19 @@ class DrawingPass(RenderPass):
             else:
                 return (x * h / w, x)
 
-        # TO DO: update uniforms
         uniforms = self._Uniforms(
-            particle_size=adjust_for_aspect(Defaults.PARTICLE_SIZE / CANVAS_SIZE[1]),
+            particle_size=adjust_for_aspect(
+                self._parameters.particle_size / CANVAS_SIZE[1],
+            ),
             scale=adjust_for_aspect((1 - BORDER) / 2),
-            seq_count=Defaults.SEQ_COUNT,
-            seq_length=Defaults.SEQ_LENGTH,
+            seq_count=self._parameters.seq_count,
+            seq_length=self._parameters.seq_count,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())
 
         self.pass_descriptor.color_attachments[0].view = current_view
 
-        vertex_count = 6 * Defaults.SEQ_COUNT * Defaults.SEQ_LENGTH
+        vertex_count = 6 * self._parameters.seq_count * self._parameters.seq_length
         rpass = encoder.begin_render_pass(**self.pass_descriptor)
         rpass.set_pipeline(self.pipeline)
         rpass.set_bind_group(0, self.uv_bind_group)

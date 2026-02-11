@@ -3,6 +3,7 @@ from inspect import get_annotations
 from itertools import chain
 from typing import NamedTuple
 
+import drawer
 import passes
 import rendergraph
 import resources
@@ -16,9 +17,11 @@ class CallRecord(NamedTuple):
     args: str
     kwargs: str
 
-def short_repr(obj, n=40):
+indent = '  '
+
+def short_repr(obj, n=60):
     r = repr(obj)
-    if len(r) > n:
+    if len(r) > n and 'result' not in r:
         r = r[:n - 3] + '...'
     return r
 
@@ -37,19 +40,19 @@ def list_lines(lis):
     for item in lis:
         i_lines = object_lines(item)
         i_lines[-1] += ','
-        i_lines = [f'    {i}' for i in i_lines]
+        i_lines = [indent + f'{i}' for i in i_lines]
         lines += i_lines
     lines += [']']
     return lines
 
 def mapping_lines(map):
-    lines = [f'{map.__class__.__name__}(']
+    lines = [f'{type(map).__name__}(']
     for (key, value) in map.items():
         v_lines = object_lines(value)
-        v_lines[0] = f'    {key}=' + v_lines[0]
+        v_lines[0] = indent + f'{key}=' + v_lines[0]
         v_lines[-1] += ','
         for i in range(1, len(v_lines)):
-            v_lines[i] = '    ' + v_lines[i]
+            v_lines[i] = indent + v_lines[i]
         lines += v_lines
     lines += [')']
     return lines
@@ -60,20 +63,20 @@ def call_lines(call):
     lines = [f'{call.name}(']
     for arg in call.args:
         a_lines = object_lines(arg)
-        a_lines = [f'    {l}' for l in a_lines]
+        a_lines = [indent + f'{l}' for l in a_lines]
         a_lines[-1] += ','
         lines += a_lines
     for (arg, value) in call.kwargs.items():
         v_lines = object_lines(value)
-        v_lines[0] = f'    {arg}=' + v_lines[0]
-        v_lines[1:] = [f'    {l}' for l in v_lines[1:]]
+        v_lines[0] = indent + f'{arg}=' + v_lines[0]
+        v_lines[1:] = [indent + f'{l}' for l in v_lines[1:]]
         v_lines[-1] += ','
         lines += v_lines
     lines += [')']
     return lines
 
 def print_object(obj, indent=''):
-    print('\n'.join(object_lines(obj)))
+    print(indent + '\n'.join(object_lines(obj)))
 
 stri = 'This is a longer string than I want to see.'
 stru = {'one': 1, 'two': 2}
@@ -96,7 +99,10 @@ class CallLogger:
     def __getattr__(self, name):
         def log(*args, **kwargs):
             self.calls.append(CallRecord(name, args, kwargs))
-            return f'result from {name}'
+            note = ''
+            if 'label' in kwargs:
+                note = f' ({kwargs['label']!r})'
+            return f'{name} result{note}'
         return log
 
     def print_calls(self, multiline=False):
@@ -153,6 +159,10 @@ class TestPass(passes.ComputePass):
         device.instantiate_pass(self.name)
 
 buffer = resources.StorageBuffer('my storage buffer', vec2f, (2, 2))
+texture = resources.Texture('my texture', 'rgba8unorm', (7, 2, 4))
+sampler = resources.Sampler('my sampler')
+
+# Test graph
 tp = TestPass('my test pass')
 tp.bind_output(buffer)
 
@@ -161,11 +171,40 @@ rg = rendergraph.RenderGraph(device, [tp])
 # device.print_calls(multiline=True)
 # exit()
 
-uv_buffer = resources.StorageBuffer('uv', vec2f, (200, 200))
-rp = particle_motion.ParticleMotionPass()
-rp.bind_uvs(uv_buffer)
+del buffer, texture, sampler, tp, rg
 
-device = CallLogger()
-rg = rendergraph.RenderGraph(device, [rp])
-device.print_calls(multiline=True)
+# Minimal real render graph
+
+class FakeCanvas(CallLogger):
+
+    @property
+    def physical_size(self):
+        return (320, 240)
+
+    def get_physical_size(self):
+        return (320, 240)
+
+    def get_preferred_format(self):
+        return 'bgra8unorm'
+
+fake_canvas = FakeCanvas()
+canvas = resources.CanvasTexture('my canvas', fake_canvas, 'bgra8unorm')
+# fake_canvas.print_calls(multiline=True)
+# exit()
+
+uv_buffer = resources.StorageBuffer('uv', vec2f, (200, 200))
+
+cp = particle_motion.ParticleMotionPass()
+cp.bind_uvs(uv_buffer)
+
+rp = drawer.DrawingPass()
+rp.bind_uvs(uv_buffer)
+rp.bind_output(canvas)
+
+fake_device = CallLogger()
+rg = rendergraph.RenderGraph(fake_device, [rp])
+
+
+print('Graph Initialization Calls')
+fake_device.print_calls(multiline=True)
 print_object(rp.pass_descriptor)

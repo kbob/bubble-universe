@@ -1,7 +1,8 @@
 import wgpu
 
 from constants import *
-from passes import Binding, ComputePass, Access
+from math import ceil
+from passes import Access, Binding, ComputePass
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
@@ -16,12 +17,21 @@ class ParticleMotionPass(ComputePass):
 
     def __init__(self, name='particles'):
         super().__init__(name)
+        self._uniforms = self._Uniforms()
         self.uvs = None
         self.uniform_buffer = UniformBuffer('particle uniforms', self._Uniforms)
-        self.shader = self.read_shader('particles.wgsl')
+        self.shader_file='particles.wgsl'
+        self.shader = self.read_shader(self.shader_file)
+
+    def update_parameters(self, seq_count, seq_length, t, r):
+        self._uniforms.seq_count = seq_count
+        self._uniforms.seq_length = seq_length
+        self._uniforms.t = t
+        self._uniforms.r = r
 
     def bindings(self):
-        assert self.uvs and self.uniform_buffer
+        assert self.uvs
+        assert self.uniform_buffer
         return [
             Binding('uv', self.uvs, Access.RW),
             Binding('uniforms', self.uniform_buffer, Access.RW),
@@ -35,6 +45,7 @@ class ParticleMotionPass(ComputePass):
         assert self.uvs
 
         shader_module = device.create_shader_module(
+            label=self.make_label(f'shader {self.shader_file}'),
             code=self.shader,
         )
 
@@ -105,5 +116,18 @@ class ParticleMotionPass(ComputePass):
         )
 
         self.pass_descriptor = wgpu.ComputePassDescriptor(
-            label=self.make_label('compute pass descriptor'),
+            label=self.make_label('compute pass'),
         )
+
+    def execute(self, device, encoder):
+
+        # TO DO: update uniforms
+        self.uniform_buffer.write_buffer(device, self._uniforms.as_data())
+
+        workgroup_count = ceil(Defaults.SEQ_COUNT / WORKGROUP_SIZE)
+        cpass = encoder.begin_compute_pass(**self.pass_descriptor)
+        cpass.set_pipeline(self.pipeline)
+        cpass.set_bind_group(0, self.uv_bind_group)
+        cpass.set_bind_group(1, self.uniforms_bind_group)
+        cpass.dispatch_workgroups(workgroup_count)
+        cpass.end()

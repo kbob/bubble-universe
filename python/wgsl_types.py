@@ -322,9 +322,9 @@ class Uniforms(metaclass=_UniformsMeta):
     def __setattr__(self, name, value):
         # set a field.  Coerce the new value to the field's type.
 
-        annotations = get_annotations(self.__class__)
+        annotations = get_annotations(type(self))
         assert name in annotations, \
-            f'unknown field {name!r} in {self.__class__.__name__}'
+            f'unknown field {name!r} in {type(self).__name__}'
 
         # ugly hack: if setting a vector, unpack its args
         def cast(name, value):

@@ -21,4 +21,10 @@ class RenderGraph:
             self.passes[pass_] = pass_.instantiate(device)
 
     def execute(self, device):
-        ...
+        encoder = device.create_command_encoder(
+            label='rendergraph command encoder'
+        )
+        for pass_ in self.passes:
+            pass_.execute(device, encoder)
+        command_buffer = encoder.finish()
+        device.queue.submit([command_buffer])
