@@ -1,0 +1,199 @@
+import wgpu
+
+from constants import *
+from passes import Access, Binding, RenderPass
+from resources import StorageBuffer, UniformBuffer
+from wgsl_types import *
+
+
+class DrawingPass(RenderPass):
+
+    class _Uniforms(Uniforms):
+        particle_size: vec2f = (Defaults.PARTICLE_SIZE / CANVAS_SIZE[1], ) * 2
+        scale: vec2f = (1, 1)
+        seq_count: u32 = Defaults.SEQ_COUNT
+        seq_length: u32 = Defaults.SEQ_LENGTH
+
+    def __init__(self, name='drawing'):
+        super().__init__(name)
+        self.uvs = None
+        self.output = None
+        self.uniform_buffer = UniformBuffer('drawing uniforms', self._Uniforms)
+        self.shader_file = 'draw.wgsl'
+        self.shader = self.read_shader(self.shader_file)
+
+    def bindings(self):
+        assert self.uvs
+        assert self.uniform_buffer
+        return [
+            Binding('uv', self.uvs, Access.RO),
+            Binding('uniforms', self.uniform_buffer, Access.RW),
+        ]
+
+    def bind_uvs(self, buffer):
+        self.uvs = buffer
+
+    def bind_output(self, texture):
+        self.output = texture
+
+    def instantiate(self, device):
+        assert self.shader
+        assert self.uvs
+        assert self.uniform_buffer
+
+        shader_module = device.create_shader_module(
+            label=self.make_label(f'shader {self.shader_file}'),
+            code=self.shader,
+        )
+
+        uv_layout = device.create_bind_group_layout(
+            label=self.make_label('uv bind group layout'),
+            entries=[
+                wgpu.BindGroupLayoutEntry(
+                    binding=0,
+                    visibility=wgpu.ShaderStage.VERTEX,
+                    buffer=wgpu.BufferBindingLayout(
+                        type='read-only-storage',
+                    ),
+                ),
+            ],
+        )
+
+        uniforms_layout = device.create_bind_group_layout(
+            label=self.make_label('uniforms bind group layout'),
+            entries=[
+                wgpu.BindGroupLayoutEntry(
+                    binding=0,
+                    visibility=(wgpu.ShaderStage.VERTEX |
+                                wgpu.ShaderStage.FRAGMENT),
+                    buffer=wgpu.BufferBindingLayout(
+                        type='uniform',
+                    ),
+                ),
+            ],
+        )
+
+        self.uv_bind_group = device.create_bind_group(
+            label=self.make_label('uv bind group'),
+            layout=uv_layout,
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=0,
+                    resource=self.uvs.resource_descriptor(),
+                ),
+            ],
+        )
+
+        self.uniforms_bind_group = device.create_bind_group(
+            label=self.make_label('uniforms bind group'),
+            layout=uniforms_layout,
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=0,
+                    resource=self.uniform_buffer.resource_descriptor(),
+                    # resource=wgpu.BufferBinding(
+                    #     buffer=self.uniform_buffer.resource_descriptor(),
+                    # ),
+                ),
+            ],
+        )
+
+        pipeline_layout=device.create_pipeline_layout(
+            label=self.make_label('pipeline layout'),
+            bind_group_layouts=[
+                uv_layout,
+                uniforms_layout,
+            ]
+        )
+
+        self.pipeline = device.create_render_pipeline(
+            label=self.make_label('pipeline'),
+            layout=pipeline_layout,
+            vertex=wgpu.VertexState(
+                module=shader_module,
+            ),
+            fragment=wgpu.FragmentState(
+                module=shader_module,
+                targets=[
+                    wgpu.ColorTargetState(
+                        blend=self.choose_blend_mode(),
+                        format=self.output.format,
+                    ),
+                ],
+            )
+        )
+
+        self.pass_descriptor = wgpu.RenderPassDescriptor(
+            label=self.make_label('render pass'),
+            color_attachments=[
+                wgpu.RenderPassColorAttachment(
+                    clear_value=(0, 0, 0, 1),
+                    load_op='clear',
+                    store_op='store',
+                    view=...,   # set in execute()
+                ),
+            ],
+        )
+
+    def execute(self, device, encoder):
+
+        # Get the output texture.
+        current_texture = self.output.current_texture()
+        current_view = self.output.current_view()
+
+        def adjust_for_aspect(x):
+            w, h = current_texture.width, current_texture.height
+            assert w != 0 and h != 0
+            if h > w:
+                return (x, x * w / h)
+            else:
+                return (x * h / w, x)
+
+        # TO DO: update uniforms
+        uniforms = self._Uniforms(
+            particle_size=adjust_for_aspect(Defaults.PARTICLE_SIZE / CANVAS_SIZE[1]),
+            scale=adjust_for_aspect((1 - BORDER) / 2),
+            seq_count=Defaults.SEQ_COUNT,
+            seq_length=Defaults.SEQ_LENGTH,
+        )
+        self.uniform_buffer.write_buffer(device, uniforms.as_data())
+
+        self.pass_descriptor.color_attachments[0].view = current_view
+
+        vertex_count = 6 * Defaults.SEQ_COUNT * Defaults.SEQ_LENGTH
+        rpass = encoder.begin_render_pass(**self.pass_descriptor)
+        rpass.set_pipeline(self.pipeline)
+        rpass.set_bind_group(0, self.uv_bind_group)
+        rpass.set_bind_group(1, self.uniforms_bind_group)
+        rpass.draw(vertex_count)
+        rpass.end()
+
+    def choose_blend_mode(self):
+        if BLEND_MODE == 'add':
+            return wgpu.BlendState(
+                color=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one',
+                ),
+                alpha=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one',
+                ),
+            )
+        elif BLEND_MODE == 'blend':
+            return wgpu.BlendState(
+                color=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one-minus-src-alpha',
+                ),
+                alpha=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one-minus-src-alpha',
+                ),
+            )
+        else:
+            assert False, f'unknown BLEND_MODE of {BLEND_MODE!r}'
