@@ -59,8 +59,8 @@ struct InterStage {
 
   let i = in.ij[0];
   let j = in.ij[1];
-  let r = f32(j) / f32(U.seq_count) * 200.0 / 255.0;
-  let g = f32(i) / f32(U.seq_length) * 200.0 / 255.0;
+  let r = f32(j) / f32(U.seq_length) * 200.0 / 255.0;
+  let g = f32(i) / f32(U.seq_count) * 200.0 / 255.0;
   let b = 99.0 / 255.0;
 
   // j is the sequence number,
