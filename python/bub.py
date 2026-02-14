@@ -29,6 +29,128 @@ class Defaults:
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
 
 
+particle_shader_source = ''' /* WGSL */
+// parameters
+//  m, n, t, r
+//  output buffer
+//  uv: array<vec2f, m * n>;
+
+struct Uniforms {
+    seq_count: u32,
+    seq_length: u32,
+    t: f32,                     // time
+    r: f32,                     // magic number
+};
+
+@group(0) @binding(0) var<storage, read_write> uvs: array<vec2f>;
+@group(1) @binding(0) var<uniform> uniforms: Uniforms;
+
+@compute @workgroup_size(64)
+fn compute_shader(@builtin(global_invocation_id) id: vec3u) {
+
+  let U = uniforms;
+
+  let i = id.x;
+  if i < U.seq_count {
+    let fi = f32(i);
+    var u: f32 = 0.0;
+    var v: f32 = 0.0;
+    var x: f32 = 0.0;
+
+    uvs[i * U.seq_length] = vec2f(u, v);
+    for (var j = 1u; j < U.seq_length; j++) {
+
+      u = sin(fi + v) + sin(U.r * fi + x);
+      v = cos(fi + v) + cos(U.r * fi + x);
+      x = u + U.t;
+      uvs[i * U.seq_length + j] = vec2f(u, -v);
+    }
+  }
+}
+'''
+
+drawing_shader_source = ''' /* WGSL */
+    struct Uniforms {
+    particle_size: vec2f,
+    scale: vec2f,
+    seq_count: u32,
+    seq_length: u32,
+    };
+
+    @group(0) @binding(0) var<storage, read> uv_buffer: array<vec2f>;
+    @group(1) @binding(0) var<uniform> uniforms: Uniforms;
+
+    struct InterStage {
+    @builtin(position) pos: vec4f,
+    @location(0) @interpolate(flat) ij: vec2u,
+    @location(1) @interpolate(perspective) pt: vec2f,
+    };
+
+    // Vertex Shader
+    //  - call 6 times per particle; emits a quad.
+
+    @vertex fn vertex_shader(
+    @builtin(vertex_index) vertex_index : u32
+    ) -> InterStage {
+
+    let U = uniforms;
+
+    let points = array<vec2f, 6>(
+        vec2f(-1.0, -1.0),
+        vec2f( 1.0, -1.0),
+        vec2f(-1.0,  1.0),
+        vec2f(-1.0,  1.0),
+        vec2f( 1.0, -1.0),
+        vec2f( 1.0,  1.0),
+    );
+
+    let uv_index = vertex_index / 6u;
+    let k = vertex_index % 6u;
+    let i = uv_index / U.seq_length;
+    let j = uv_index % U.seq_length;
+    let ij = vec2u(i, j);
+    let uv = uv_buffer[uv_index];
+    let pt = points[k];
+    let xy = U.scale * uv + U.particle_size * pt;
+
+    var out: InterStage;
+    out.pos = vec4f(xy, 0.0, 1.0);
+    out.ij = ij;
+    out.pt = pt;
+
+    return out;
+    }
+
+    // Fragment Shader
+    //  - trims particle to a circle, transparent near edges
+    //  - color is rgb(i, j, 99)
+
+    @fragment fn fragment_shader(in: InterStage) -> @location(0) vec4f {
+
+    let U = uniforms;
+
+    // i is the sequence number,
+    // j is the sequence position
+
+    let i = in.ij[0];
+    let j = in.ij[1];
+    let r = f32(i) / f32(U.seq_count) * 200.0 / 255.0;
+    let g = f32(j) / f32(U.seq_length) * 200.0 / 255.0;
+    let b = 99.0 / 255.0;
+
+    let rad2 = dot(in.pt, in.pt);
+    var a = (1.0 - rad2);
+    // a *= 1 - (U.particle_size[1] * 28);
+    if a < 0.01 {
+        a = 0.0;
+        discard;
+    }
+
+    return vec4f(r*a, g*a, b*a, a);
+    }
+'''
+
+
 @dataclass
 class BubblerParameters:
     seq_count: int = Defaults.SEQ_COUNT
@@ -54,24 +176,17 @@ class DrawingUniforms(Uniforms):
     seq_length: u32 = Defaults.SEQ_LENGTH
 
 
+def create_shader_from_string(device, string, **kwargs):
+    assert 'label' in kwargs
+    kwargs['code'] = string
+    return device.create_shader_module(**kwargs)
+
+
 def camel_to_snake(name):
     return re.sub(r'(?!^)(?=[A-Z])', '_', name).lower()
 
 assert camel_to_snake('camelCaseName') == 'camel_case_name'
 assert camel_to_snake('PascalCaseName') == 'pascal_case_name'
-
-def read_shader(filename):
-    """ return contents of a file in the shaders directory """
-    up = os.path.dirname
-    path = os.path.join(up(up(__file__)), 'shaders', filename)
-    with open(path) as f:
-        return f.read()
-
-def create_shader_from_file(device, filename, **kwargs):
-    """ create a wgpu shader module from a file in the shaders directory """
-    source = read_shader(filename)
-    return device.create_shader_module(
-        label=filename, code=read_shader(filename), **kwargs)
 
 def create_uniform_buffer(device, uniforms_type):
     return device.create_buffer(
@@ -127,8 +242,18 @@ class Bubbler:
         self._device = device
 
         # create shader modules
-        particle_shader = create_shader_from_file(device, 'particles.wgsl')
-        drawing_shader = create_shader_from_file(device, 'draw.wgsl')
+        # particle_shader = create_shader_from_file(device, 'particles.wgsl')
+        # drawing_shader = create_shader_from_file(device, 'draw.wgsl')
+        particle_shader = create_shader_from_string(
+            device,
+            particle_shader_source,
+            label='particle shader',
+        )
+        drawing_shader = create_shader_from_string(
+            device,
+            drawing_shader_source,
+            label='drawing shader',
+        )
 
         # create buffers
         uv_bytes = MAX_SEQ_COUNT * MAX_SEQ_LENGTH * vec2f.bytes
