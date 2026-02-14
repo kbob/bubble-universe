@@ -2,20 +2,19 @@
 
 from dataclasses import dataclass
 from inspect import get_annotations
-from math import tau
 
 from rendercanvas.auto import RenderCanvas, loop
 import wgpu
 
 from constants import *
+from copier import CopyPass
 from drawer import DrawingPass
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
-from resources import CanvasTexture, StorageBuffer
+from resources import CanvasTexture, StorageBuffer, Texture
 from wgsl_types import *
 
 class Bubbler:
-
 
     @dataclass
     class Parameters:
@@ -32,6 +31,7 @@ class Bubbler:
     def __init__(self):
         self._parameters = self.Parameters()
         self._time = 0
+        self._last_size = None
 
     def update_parameters(
         self,
@@ -46,32 +46,54 @@ class Bubbler:
             if loco[name] is not None:
                 setattr(self._parameters, name, loco[name])
         for param in get_annotations(self.Parameters):
-            # print(f'setting {param} to {loco[param]}')
             update(param)
-        # print(f'B.u_p: {self._parameters.particle_size = }')
-        # import time.sleep
-        # sleep(0.3)
 
     def build_render_graph(self, device, context, display_format):
         self.device = device
-        self.uv = StorageBuffer(
+
+        # Create resources
+
+        self.uvs = StorageBuffer(
             name='uvs',
             type_=vec2f,
-            shape=(Defaults.SEQ_COUNT, Defaults.SEQ_LENGTH))
+            shape=(Defaults.SEQ_COUNT, Defaults.SEQ_LENGTH),
+        )
         self.canvas = CanvasTexture('display', context, display_format)
+        self.image_texture = Texture(
+            name='image',
+            format='rgba8unorm',
+            shape=(*CANVAS_SIZE, 4),
+            readable=True,
+            renderable=True,
+        )
 
-        self.particles = ParticleMotionPass()
-        self.particles.bind_uvs(self.uv)
+        # Create compute and render passes
 
-        self.drawer = DrawingPass()
-        self.drawer.bind_uvs(self.uv)
-        self.drawer.bind_output(self.canvas)
+        self.particles = (
+            ParticleMotionPass()
+            .bind_uvs(self.uvs)
+        )
+
+        self.drawer = (
+            DrawingPass()
+            .bind_uvs(self.uvs)
+            .bind_color_output(self.image_texture)
+        )
+
+        self.copier = (
+            CopyPass()
+            .bind_input(self.image_texture)
+            .bind_color_output(self.canvas)
+        )
+
+        # Build the graph
 
         self.rendergraph = RenderGraph(
             device=device,
             passes=[
                 self.particles,
                 self.drawer,
+                self.copier,
             ],
         )
 
@@ -90,7 +112,16 @@ class Bubbler:
             particle_size=self._parameters.particle_size,
         )
 
+        # Set intermediate textures' sizes
+        size = self.canvas.current_size()
+        if self._last_size != size:
+            self._last_size = size
+            self.image_texture.resize(self.device, size)
+            self.copier.resize(self.device, size)
+
+        # Run the compute and render passes
         self.rendergraph.execute(self.device)
+
         self._inc_time(1 / MAX_FPS)
 
     def _inc_time(self, dt):
@@ -117,33 +148,10 @@ def main():
     preferred_format = context.get_preferred_format(adapter)
     context.configure(device=device, format=preferred_format)
 
-    # # Don't need resize events, every frame checks its size
-    # @canvas.add_event_handler('resize')
-    # def handle_event(event):
-    #     print(f'Event: {event["event_type"]!r}, size = {canvas.get_physical_size()}')
-
     bubbler = Bubbler()
     bubbler.build_render_graph(device, context, preferred_format)
-    # bubbler.init_graphics(device, preferred_format)
-    # parameters = BubblerParameters()
 
     def draw_frame():
-        global frame
-        try:
-            frame += 1
-        except NameError:
-            frame = 0
-        fc = 750
-        n = fc // 2
-        hn = n // 2
-        z = 1 + min(frame % n, n - frame % n)
-        p = 1 + (hn - z) / 10
-        if hn <= frame % fc < 3 * hn:
-            c = hn; l = z
-        else:
-            c = z; l = hn
-        bubbler.update_parameters(seq_count=c, seq_length=l, particle_size=p)
-
         bubbler.draw_frame()
 
     canvas.request_draw(draw_frame)

@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from enum import Enum
 import os.path
 from typing import NamedTuple
@@ -16,19 +16,23 @@ class Binding(NamedTuple):
     resource: resources.Resource
     access: Access
 
-class Pass:
+class Pass(ABC):
     """Base class for compute and render passes"""
 
     def __init__(self, name):
         self.name = name
 
     @abstractmethod
-    def instantiate(self):
+    def bindings(self):
         ...
 
     @abstractmethod
-    def bindings(self):
+    def instantiate(self):
         ...
+
+    def resize(self, new_size):
+        print(f'resize not handled by pass {self.name}')
+        pass
 
     @abstractmethod
     def execute(self, device, encoder):
@@ -54,4 +58,7 @@ class ComputePass(Pass):
     ...
 
 class RenderPass(Pass):
-    ...
+
+    @abstractmethod
+    def bind_color_output(self, tex):
+        ...

@@ -114,21 +114,41 @@ class UniformBuffer(Resource):
 
 class Texture(Resource):
 
-    def __init__(self, name, format, shape, writable=False):
+    def __init__(
+        self,
+        name,
+        format,
+        shape,
+        bindable_as_texture=True,
+        readable=False,
+        writable=False,
+        renderable=False,
+    ):
         super().__init__(name)
         assert re.match(r'[rgba]{4}8', format)
         assert len(shape) == 3, 'shape must be (width, height, #channels)'
         self.format = format
         self.shape = shape
+        self.is_bindable_as_texture=bindable_as_texture
+        self.is_readable = readable
         self.is_writable = writable
+        self.is_renderable = renderable
         self.texture = None
         self.view = None
 
     def instantiate(self, device):
         if self.texture is None:
-            usage = wgpu.GPUTextureUsage.TEXTURE_BINDING
+            usage = 0
+            assert self.is_bindable_as_texture
+            if self.is_bindable_as_texture:
+                usage |= wgpu.TextureUsage.TEXTURE_BINDING
+            if self.is_readable:
+                usage |= wgpu.TextureUsage.COPY_SRC
             if self.is_writable:
-                usage |= wgpu.GPUTextureUsage.COPY_DST
+                usage |= wgpu.TextureUsage.COPY_DST
+            if self.is_renderable:
+                usage |= wgpu.TextureUsage.RENDER_ATTACHMENT
+            assert usage & wgpu.TextureUsage.TEXTURE_BINDING
             self.texture = device.create_texture(
                 label=self.make_label('texture'),
                 size=self.shape[:2],
@@ -137,21 +157,35 @@ class Texture(Resource):
             )
             self.view = self.texture.create_view(
                 label=self.make_label('texture view'),
-                format=self.format,
-                dimension='2d',
-                usage=wgpu.TextureUsage.TEXTURE_BINDING,
             )
         return self.texture
+
+    def resize(self, device, size):
+        # destroy texture
+        # create texture
+        # create view
+        self.texture.destroy()
+        self.shape = (*size, self.shape[2])
+        self.texture = None
+        self.instantiate(device)
+
 
     def resource_descriptor(self):
         assert self.texture is not None
         assert self.view is not None
         return self.view
 
+    def current_texture(self):
+        assert self.texture is not None
+        return self.texture
+
     def current_view(self):
         assert self.texture is not None
         assert self.view is not None
         return self.view
+
+    def current_size(self):
+        return self.current_texture().size[:2]
 
     def write_texture(self, device, data):
         assert self.texture is not None
@@ -217,7 +251,9 @@ class Sampler(Resource):
 
     def instantiate(self, device):
         if self.sampler is None:
-            self.sampler = device.create_sampler()
+            self.sampler = device.create_sampler(
+                label=self.name,
+            )
         return self.sampler
 
     def resource_descriptor(self):

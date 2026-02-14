@@ -45,9 +45,11 @@ class DrawingPass(RenderPass):
 
     def bind_uvs(self, buffer):
         self.uvs = buffer
+        return self
 
-    def bind_output(self, texture):
+    def bind_color_output(self, texture):
         self.output = texture
+        return self
 
     def instantiate(self, device):
         assert self.shader
@@ -148,11 +150,11 @@ class DrawingPass(RenderPass):
     def execute(self, device, encoder):
 
         # Get the output texture.
-        current_texture = self.output.current_texture()
+        current_size = self.output.current_size()
         current_view = self.output.current_view()
 
         def adjust_for_aspect(x):
-            w, h = current_texture.width, current_texture.height
+            w, h = current_size
             assert w != 0 and h != 0
             if h > w:
                 return (x, x * w / h)

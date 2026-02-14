@@ -39,6 +39,7 @@ class ParticleMotionPass(ComputePass):
 
     def bind_uvs(self, buffer):
         self.uvs = buffer
+        return self
 
     def instantiate(self, device):
         assert self.shader
