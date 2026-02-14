@@ -128,7 +128,7 @@ class DrawingPass(RenderPass):
                 module=shader_module,
                 targets=[
                     wgpu.ColorTargetState(
-                        blend=self.choose_blend_mode(),
+                        blend=self._choose_blend_mode(),
                         format=self.output.format,
                     ),
                 ],
@@ -181,7 +181,7 @@ class DrawingPass(RenderPass):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def choose_blend_mode(self):
+    def _choose_blend_mode(self):
         if BLEND_MODE == 'add':
             return wgpu.BlendState(
                 color=wgpu.BlendComponent(

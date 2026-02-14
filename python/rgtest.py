@@ -146,17 +146,21 @@ class TestPass(passes.ComputePass):
         super().__init__(name)
         self.output = None
 
-    def bind_output(self, out):
-        self.output = out
-        return self
-
     def bindings(self):
         return [
             passes.Binding('output', self.output, passes.Access.RW)
         ]
 
+    def bind_output(self, out):
+        self.output = out
+        return self
+
     def instantiate(self, device):
         device.instantiate_pass(self.name)
+
+    def execute(self, device, encoder):
+        device.execute(f'{self.name}({encoder = })')
+
 
 buffer = resources.StorageBuffer('my storage buffer', vec2f, (2, 2))
 texture = resources.Texture('my texture', 'rgba8unorm', (7, 2, 4))
@@ -199,7 +203,7 @@ cp.bind_uvs(uv_buffer)
 
 rp = drawer.DrawingPass()
 rp.bind_uvs(uv_buffer)
-rp.bind_output(canvas)
+rp.bind_color_output(canvas)
 
 fake_device = CallLogger()
 rg = rendergraph.RenderGraph(fake_device, [rp])
