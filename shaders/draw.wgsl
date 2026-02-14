@@ -34,11 +34,12 @@ struct InterStage {
 
   let uv_index = vertex_index / 6u;
   let k = vertex_index % 6u;
-  let i = uv_index % U.seq_length;
-  let j = uv_index / U.seq_length;
+  let i = uv_index / U.seq_length;
+  let j = uv_index % U.seq_length;
   let ij = vec2u(i, j);
   let uv = uv_buffer[uv_index];
   let pt = points[k];
+
   let xy = U.scale * uv + U.particle_size * pt;
 
   var out: InterStage;
@@ -57,18 +58,17 @@ struct InterStage {
 
   let U = uniforms;
 
+  // i is the sequence number,
+  // j is the sequence position
+
   let i = in.ij[0];
   let j = in.ij[1];
-  let r = f32(j) / f32(U.seq_length) * 200.0 / 255.0;
-  let g = f32(i) / f32(U.seq_count) * 200.0 / 255.0;
+  let r = f32(i) / f32(U.seq_count) * 200.0 / 255.0;
+  let g = f32(j) / f32(U.seq_length) * 200.0 / 255.0;
   let b = 99.0 / 255.0;
-
-  // j is the sequence number,
-  // i is the sequence position
 
   let rad2 = dot(in.pt, in.pt);
   var a = (1.0 - rad2);
-  a *= 1 - (U.particle_size[1] * 28);
   if a < 0.01 {
     a = 0.0;
     discard;
