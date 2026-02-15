@@ -125,7 +125,6 @@ class Texture(Resource):
         renderable=False,
     ):
         super().__init__(name)
-        assert re.match(r'[rgba]{4}8', format)
         assert len(shape) == 3, 'shape must be (width, height, #channels)'
         self.format = format
         self.shape = shape
@@ -211,7 +210,6 @@ class CanvasTexture(Texture):
 
     def __init__(self, name, context, format):
 
-        assert re.match(r'[rgba]{4}8', format)
         shape = context.physical_size + (4, )
         super().__init__(name, format, shape, writable=True)
         self.context = context   

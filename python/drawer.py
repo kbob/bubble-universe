@@ -41,6 +41,7 @@ class DrawingPass(RenderPass):
         return [
             Binding('uv', self.uvs, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding('color output', self.output, Access.RW),
         ]
 
     def bind_uvs(self, buffer):
