@@ -15,7 +15,9 @@ class DrawingPass(RenderPass):
         particle_size: float = Defaults.PARTICLE_SIZE
 
     class _Uniforms(Uniforms):
-        particle_size: vec2f = (Defaults.PARTICLE_SIZE / CANVAS_SIZE[1], ) * 2
+        particle_size: vec2f = (
+            (Defaults.PARTICLE_SIZE / Defaults.CANVAS_SIZE[1], ) * 2
+        )
         scale: vec2f = (1, 1)
         seq_count: u32 = Defaults.SEQ_COUNT
         seq_length: u32 = Defaults.SEQ_LENGTH
@@ -164,7 +166,7 @@ class DrawingPass(RenderPass):
 
         uniforms = self._Uniforms(
             particle_size=adjust_for_aspect(
-                self._parameters.particle_size / CANVAS_SIZE[1],
+                self._parameters.particle_size / Defaults.CANVAS_SIZE[1],
             ),
             scale=adjust_for_aspect((1 - BORDER) / 2),
             seq_count=self._parameters.seq_count,

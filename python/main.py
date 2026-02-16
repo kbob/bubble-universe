@@ -4,8 +4,10 @@ import argparse
 from dataclasses import dataclass
 from inspect import get_annotations
 from math import tau
+import re
 import sys
 
+import numpy as np
 from rendercanvas.auto import RenderCanvas, loop
 import wgpu
 
@@ -15,6 +17,7 @@ from drawer import DrawingPass
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import CanvasTexture, StorageBuffer, Texture
+from video import VideoOutputFile
 from wgsl_types import *
 
 
@@ -68,11 +71,13 @@ class Bubbler:
             type_=vec2f,
             shape=(Defaults.SEQ_COUNT, Defaults.SEQ_LENGTH),
         )
+        render_size = outputs[0].current_size()
+        self._last_size = render_size
         if self._is_multi_output:
             self.image_texture = Texture(
                 name='image',
                 format='rgba8unorm',
-                shape=(*CANVAS_SIZE, 4), # XXX
+                shape=(*render_size, 4),
                 readable=True,
                 renderable=True,
             )
@@ -99,11 +104,10 @@ class Bubbler:
 
         if self._is_multi_output:
             self.copiers = [
-                (
-                    CopyPass()
+                CopyPass()
                     .bind_input(self.image_texture)
                     .bind_color_output(out)
-                ) for out in outputs]
+                for out in outputs]
             passes.extend(self.copiers)
 
         # create render graph
@@ -134,7 +138,8 @@ class Bubbler:
             self._last_size = size
             if self._is_multi_output:
                 self.image_texture.resize(self.device, size)
-                for cp in self.copiers[1:]:
+                self.drawer.bind_color_output(self.image_texture)
+                for cp in self.copiers:
                     cp.resize(self.device, size)
 
         # Run the compute and render passes
@@ -163,7 +168,7 @@ def run(args):
     device = adapter.request_device_sync()
 
     canvas = RenderCanvas(
-        size=CANVAS_SIZE,
+        size=Defaults.CANVAS_SIZE,
         title='Bubble Universe',
         update_mode='continuous',
         max_fps=MAX_FPS,
@@ -187,30 +192,79 @@ def run(args):
 
 def run_record(args):
     print(f'record: {args = }')
+    video_res = args.resolution
     adapter = wgpu.gpu.request_adapter_sync()
     device = adapter.request_device_sync()
 
-    # basically the same as run() but with update_mode='ondemand'
-    # and an extra module in the render graph, and then a main loop
-    # that calls request_draw() N times.
-    #
-    # class RecordingBubbler:
-    #     def __init__(): ...
-    #     def 
+    canvas = RenderCanvas(
+        size=video_res,
+        title='Bubble Universe',
+        update_mode='continuous',
+        max_fps=args.fps,
+        )
+    context = canvas.get_wgpu_context()
+    preferred_format = context.get_preferred_format(adapter)
+    context.configure(device=device, format=preferred_format)
+
+    canvas_texture = CanvasTexture('display', context, preferred_format)
+    print(f'canvas texture shape = {canvas_texture.current_size()}')
+    video_texture = Texture(
+        name='video',
+        format='rgba8unorm-srgb',
+        shape=(*video_res, 4),
+        renderable=True,
+        readable=True,
+    )
+
+    # init video out
+    video_out = VideoOutputFile(args.output, video_res, fps=args.fps)
+
+    bubbler = Bubbler()
+    bubbler.build_render_graph(device, [video_texture, canvas_texture])
+
+    frame_num = [0]
+    def draw_frame():
+        bubbler.draw_frame()
+
+        # read frame and save to video file
+        texture_data = video_texture.read_texture(device)
+        image_data = (
+            np.frombuffer(texture_data, dtype=np.uint8)
+            .reshape((*video_res[::-1], 4))
+        )
+        video_out.append_frame(image_data)
+
+        # stop after enough frames
+        if frame_num[0] == args.duration:
+            loop.stop()
+        frame_num[0] += 1
+
+    canvas.request_draw(draw_frame)
+
+    loop.run()
+    video_out.close()
 
 
 def build_argparser():
 
+    def resolution(s):
+        # function name appears in an error message.
+        m = re.match(r'(\d+)x(\d+)', s)
+        if not m:
+            raise ValueError('your mother dresses you funny')
+        return (int(m.group(1)), int(m.group(2)))
+
+
     # Main parser and global  args
     parser = argparse.ArgumentParser(
-        description='Explore argument parsing',
+        description='Explore the bubble universe',
     )
-    parser.add_argument(
-        '-v', '--verbose',
-        action='count',
+    # parser.add_argument(
+    #     '-v', '--verbose',
+    #     action='count',
 
-        help='show actions (repeat for more)'
-    )
+    #     help='show actions (repeat for more)',
+    # )
     subparsers = parser.add_subparsers(
         dest='cmd',
 
@@ -224,15 +278,29 @@ def build_argparser():
     rec_parser = subparsers.add_parser(
         'record',
 
-        help='save to video',
-        description='Save to video',
+        help='record video to a file',
+        description='Record video to a file',
     )
     rec_parser.add_argument(
         '-o', '--output',
         default=Defaults.VIDEO_FILE,
 
         metavar='FILE',
-        help=f'output file (default {Defaults.VIDEO_FILE})'
+        help=f'output file (default {Defaults.VIDEO_FILE})',
+    )
+    rec_parser.add_argument(
+        '-r', '--resolution',
+        type=resolution,
+        default=Defaults.CANVAS_SIZE,
+
+        help=f'set video resolution (default {Defaults.CANVAS_SIZE})',
+    )
+    rec_parser.add_argument(
+        '-f', '--fps',
+        type=int,
+        default=MAX_FPS,
+
+        help=f'set frames per second (default {MAX_FPS})',
     )
     rec_parser.add_argument(
         '-d', '--duration',
@@ -240,7 +308,7 @@ def build_argparser():
         default=default_frame_count,
 
         metavar='FRAMES',
-        help=f'video duration (default {default_frame_count})'
+        help=f'video duration (default {default_frame_count})',
     )
     return parser
 
