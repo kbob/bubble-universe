@@ -119,6 +119,22 @@ class CopyPass(RenderPass):
             ],
         )
 
+    def resize(self, device, size):
+        self.input_bind_group = device.create_bind_group(
+            label=self.make_label('input bind group (resized)'),
+            layout=self.pipeline.get_bind_group_layout(0),
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=0,
+                    resource=self.input.current_view(),
+                ),
+                wgpu.BindGroupEntry(
+                    binding=1,
+                    resource=self.input_sampler.resource_descriptor(),
+                )
+            ],
+        )
+
     def execute(self, device, encoder):
 
         # Get the output texture.

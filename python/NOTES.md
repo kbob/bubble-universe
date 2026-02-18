@@ -110,7 +110,7 @@ pass modifications.
 
 ========
 
-The start of the hard work is RenderGraph's constructor.  
+The start of the hard work is RenderGraph's constructor.
 
 
 ========

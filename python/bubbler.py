@@ -127,6 +127,8 @@ class Bubbler:
             if self._is_multi_output:
                 self.image_texture.resize(self.device, size)
                 self.drawer.bind_color_output(self.image_texture)
+                for cp in self.copiers:
+                    cp.resize(self.device, size)
 
         # Run the compute and render passes
 

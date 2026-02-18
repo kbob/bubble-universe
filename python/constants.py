@@ -5,8 +5,9 @@ MAX_FPS = 60                    # FPS = frames/second
 MAX_SEQ_COUNT = 2000
 MAX_SEQ_LENGTH = 2000
 BORDER = 0.1                    # fraction of viewport size
-BLEND_MODE = 'add'              # 'add' or 'blend'
 WORKGROUP_SIZE = 64             # defined in compute shader(s)
+BLEND_MODE = 'add'              # 'add' or 'blend'
+USE_HDR = True
 HDR_PIXEL_FORMAT = 'rgba16float'
 
 class Defaults:

@@ -136,9 +136,14 @@ class BubblerHDR:
         size = self.resize_controller.current_size()
         if self._last_size != size:
             self._last_size = size
+            self.HDR_image.resize(self.device, size)
+            self.drawer.bind_color_output(self.HDR_image)
+            self.mapper.bind_input(self.HDR_image)
+            self.mapper.resize(self.device, size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, size)
-                self.drawer.bind_color_output(self.image_texture)
+                for cp in self.copiers:
+                    cp.resize(self.device, size)
 
         # Run the compute and render passes
 

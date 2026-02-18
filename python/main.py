@@ -31,8 +31,10 @@ def run(args):
 
     canvas_texture = CanvasTexture('display', context, preferred_format)
 
-    # bubbler = Bubbler()
-    bubbler = BubblerHDR()
+    if USE_HDR:
+        bubbler = BubblerHDR()
+    else:
+        bubbler = Bubbler()
     bubbler.build_render_graph(device, [canvas_texture])
 
     def draw_frame():
@@ -70,7 +72,10 @@ def run_record(args):
     # init video out
     video_out = VideoOutputFile(args.output, video_res, fps=args.fps)
 
-    bubbler = Bubbler()
+    if USE_HDR:
+        bubbler = BubblerHDR()
+    else:
+        bubbler = Bubbler()
     bubbler.build_render_graph(device, [video_texture, canvas_texture])
 
     frame_num = 0

@@ -100,7 +100,7 @@
       // HTTP GET the shaders' source code.
       const particle_code = await text_from_url('particles.wgsl');
       const draw_code = await text_from_url('draw.wgsl');
-      
+
       // Create shader modules
       const particle_module = device.createShaderModule({
         label: 'particle generation shader',
@@ -295,7 +295,7 @@
         },
         ],
       };
-  
+
       var anim_id = null;
       var frame = 0;
       var scale, particle_size;
@@ -320,10 +320,10 @@
         // set it as the texture to render to.
         draw_render_pass_descriptor.colorAttachments[0].view =
           context.getCurrentTexture();
-    
+
         // make a command encoder to start encoding commands
         const encoder = device.createCommandEncoder({ label: 'our encoder' });
-    
+
         // Add particle compute pass to the encoder
         const particle_pass = encoder.beginComputePass();
         particle_pass.setPipeline(particle_pipeline);
@@ -343,7 +343,7 @@
         const commandBuffer = encoder.finish();
         device.queue.submit([commandBuffer]);
       }
-    
+
       let fcount = 0;
       function animate() {
         if ((fcount += 1) >= 0){
@@ -372,7 +372,7 @@
           }
         }
 
-        // 
+        //
         if (anim_id !== null) {
           cancelAnimationFrame(anim_id);
         }
