@@ -36,6 +36,7 @@ class DrawingPass(RenderPass):
         self._parameters.seq_count = seq_count
         self._parameters.seq_length = seq_length
         self._parameters.particle_size = particle_size
+        return self
 
     def bindings(self):
         assert self.uvs is not None
@@ -81,6 +82,12 @@ class DrawingPass(RenderPass):
                 ),
             ],
         )
+        # # Need to move ownership of self.pipeline
+        # # to RenderPass, then I can factor out create_bind_group()
+        # #
+        # # And then the whole 'instantiate' can be driven by self.bindings()
+        #
+        # # self.uv_bind_group = self.create_bind_group(0, 'uv', self.uvs)
 
         self.uniforms_bind_group = device.create_bind_group(
             label=self.make_label('uniforms bind group'),

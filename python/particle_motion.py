@@ -28,6 +28,7 @@ class ParticleMotionPass(ComputePass):
         self._uniforms.seq_length = seq_length
         self._uniforms.t = t
         self._uniforms.r = r
+        return self
 
     def bindings(self):
         assert self.uvs

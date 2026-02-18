@@ -44,6 +44,7 @@ class Bubbler:
                 setattr(self._parameters, name, loco[name])
         for param in get_annotations(self.Parameters):
             update(param)
+        return self
 
 
     def build_render_graph(self, device, outputs):
