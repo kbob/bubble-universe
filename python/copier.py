@@ -47,8 +47,9 @@ class CopyPass(RenderPass):
         self.output = None
 
     def bindings(self):
-        assert self.input
-        assert self.output
+        assert self.input is not None
+        assert self.input_sampler is not None
+        assert self.output is not None
         return [
             Binding('input texture', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
@@ -64,8 +65,9 @@ class CopyPass(RenderPass):
         return self
 
     def instantiate(self, device):
-        assert self.input
-        assert self.output
+        assert self.input is not None
+        assert self.input_sampler is not None
+        assert self.output is not None
 
         # shader
         shader_module = device.create_shader_module(
@@ -74,21 +76,7 @@ class CopyPass(RenderPass):
         )
 
         # pipeline
-        self.pipeline = device.create_render_pipeline(
-            label=self.make_label('pipeline'),
-            layout='auto',
-            vertex=wgpu.VertexState(
-                module=shader_module,
-            ),
-            fragment=wgpu.FragmentState(
-                module=shader_module,
-                targets=[
-                    wgpu.ColorTargetState(
-                        format=self.output.format,
-                    ),
-                ],
-            ),
-        )
+        self.pipeline = self.create_pipeline(device, shader_module)
 
         # bind groups
         self.input_bind_group = device.create_bind_group(

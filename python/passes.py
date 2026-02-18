@@ -4,6 +4,7 @@ import os.path
 from typing import NamedTuple
 
 import resources
+import wgpu
 
 
 class Access(Enum):
@@ -50,9 +51,6 @@ class Pass(ABC):
             return f.read()
 
 
-# I can refactor creation of shader, buffer, texture(?)
-# into Pass or RenderPass, I think.
-
 class ComputePass(Pass):
     ...
 
@@ -61,3 +59,21 @@ class RenderPass(Pass):
     @abstractmethod
     def bind_color_output(self, tex):
         ...
+
+    def create_pipeline(self, device, shader_module, blend=None):
+        return device.create_render_pipeline(
+            label=self.make_label('pipeline'),
+            layout='auto',
+            vertex=wgpu.VertexState(
+                module=shader_module,
+            ),
+            fragment=wgpu.FragmentState(
+                module=shader_module,
+                targets=[
+                    wgpu.ColorTargetState(
+                        blend=blend,
+                        format=self.output.format,
+                    ),
+                ],
+            ),
+        )

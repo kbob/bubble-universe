@@ -38,8 +38,8 @@ class DrawingPass(RenderPass):
         self._parameters.particle_size = particle_size
 
     def bindings(self):
-        assert self.uvs
-        assert self.uniform_buffer
+        assert self.uvs is not None
+        assert self.uniform_buffer is not None
         return [
             Binding('uv', self.uvs, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
@@ -55,30 +55,20 @@ class DrawingPass(RenderPass):
         return self
 
     def instantiate(self, device):
-        assert self.shader
-        assert self.uvs
-        assert self.uniform_buffer
+        assert self.shader is not None
+        assert self.uvs is not None
+        assert self.uniform_buffer is not None
 
         shader_module = device.create_shader_module(
             label=self.make_label(f'shader {self.shader_file}'),
             code=self.shader,
         )
 
-        self.pipeline = device.create_render_pipeline(
-            label=self.make_label('pipeline'),
-            layout='auto',
-            vertex=wgpu.VertexState(
-                module=shader_module,
-            ),
-            fragment=wgpu.FragmentState(
-                module=shader_module,
-                targets=[
-                    wgpu.ColorTargetState(
-                        blend=self._choose_blend_mode(),
-                        format=self.output.format,
-                    ),
-                ],
-            )
+        # pipeline
+        self.pipeline = self.create_pipeline(
+            device,
+            shader_module,
+            blend=self._choose_blend_mode(),
         )
 
         self.uv_bind_group = device.create_bind_group(

@@ -33,6 +33,10 @@ class ToneMapPass(RenderPass):
         return self
 
     def instantiate(self, device):
+        assert self.input is not None
+        assert self.input_sampler is not None
+        assert self.output is not None
+
         # shader
         shader_module = device.create_shader_module(
             label=self.make_label(f'shader {self.shader_file}'),
@@ -40,21 +44,7 @@ class ToneMapPass(RenderPass):
         )
 
         # pipeline
-        self.pipeline = device.create_render_pipeline(
-            label=self.make_label('pipeline'),
-            layout='auto',
-            vertex=wgpu.VertexState(
-                module=shader_module,
-            ),
-            fragment=wgpu.FragmentState(
-                module=shader_module,
-                targets=[
-                    wgpu.ColorTargetState(
-                        format=self.output.format,
-                    ),
-                ],
-            ),
-        )
+        self.pipeline = self.create_pipeline(device, shader_module)
 
         # bind groups
         self.input_bind_group = device.create_bind_group(
