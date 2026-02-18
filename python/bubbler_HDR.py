@@ -3,7 +3,7 @@ from inspect import get_annotations
 
 from constants import *
 from copier import CopyPass
-from drawer_HDR import DrawingPassHDR
+from drawer import DrawingPass
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
@@ -87,7 +87,7 @@ class BubblerHDR:
             .bind_uvs(self.uvs)
         )
         self.drawer = (
-            DrawingPassHDR()
+            DrawingPass()
             .bind_uvs(self.uvs)
             .bind_color_output(self.HDR_image)
         )

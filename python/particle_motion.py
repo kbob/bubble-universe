@@ -50,35 +50,17 @@ class ParticleMotionPass(ComputePass):
             code=self.shader,
         )
 
-        uv_layout = device.create_bind_group_layout(
-            label=self.make_label('uv bind group layout'),
-            entries=[
-                wgpu.BindGroupLayoutEntry(
-                    binding=0,
-                    visibility=wgpu.ShaderStage.COMPUTE,
-                    buffer=wgpu.BufferBindingLayout(
-                        type='storage',
-                    ),
-                ),
-            ],
-        )
-
-        uniforms_layout = device.create_bind_group_layout(
-            label=self.make_label('uniforms bind group layout'),
-            entries=[
-                wgpu.BindGroupLayoutEntry(
-                    binding=0,
-                    visibility=wgpu.ShaderStage.COMPUTE,
-                    buffer=wgpu.BufferBindingLayout(
-                        type='uniform',
-                    ),
-                ),
-            ],
+        self.pipeline = device.create_compute_pipeline(
+            label=self.make_label('pipeline'),
+            layout='auto',
+            compute=wgpu.ProgrammableStage(
+                module=shader_module,
+            ),
         )
 
         self.uv_bind_group = device.create_bind_group(
             label=self.make_label('uv bind group'),
-            layout=uv_layout,
+            layout=self.pipeline.get_bind_group_layout(0),
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
@@ -89,7 +71,7 @@ class ParticleMotionPass(ComputePass):
 
         self.uniforms_bind_group = device.create_bind_group(
             label=self.make_label('uniforms bind group'),
-            layout=uniforms_layout,
+            layout=self.pipeline.get_bind_group_layout(1),
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
@@ -98,22 +80,6 @@ class ParticleMotionPass(ComputePass):
                     ),
                 ),
             ],
-        )
-
-        pipeline_layout=device.create_pipeline_layout(
-            label=self.make_label('pipeline layout'),
-            bind_group_layouts=[
-                uv_layout,
-                uniforms_layout,
-            ]
-        )
-
-        self.pipeline = device.create_compute_pipeline(
-            label=self.make_label('pipeline'),
-            layout=pipeline_layout,
-            compute=wgpu.ProgrammableStage(
-                module=shader_module,
-            ),
         )
 
         self.pass_descriptor = wgpu.ComputePassDescriptor(

@@ -64,36 +64,26 @@ class DrawingPass(RenderPass):
             code=self.shader,
         )
 
-        uv_layout = device.create_bind_group_layout(
-            label=self.make_label('uv bind group layout'),
-            entries=[
-                wgpu.BindGroupLayoutEntry(
-                    binding=0,
-                    visibility=wgpu.ShaderStage.VERTEX,
-                    buffer=wgpu.BufferBindingLayout(
-                        type='read-only-storage',
+        self.pipeline = device.create_render_pipeline(
+            label=self.make_label('pipeline'),
+            layout='auto',
+            vertex=wgpu.VertexState(
+                module=shader_module,
+            ),
+            fragment=wgpu.FragmentState(
+                module=shader_module,
+                targets=[
+                    wgpu.ColorTargetState(
+                        blend=self._choose_blend_mode(),
+                        format=self.output.format,
                     ),
-                ),
-            ],
-        )
-
-        uniforms_layout = device.create_bind_group_layout(
-            label=self.make_label('uniforms bind group layout'),
-            entries=[
-                wgpu.BindGroupLayoutEntry(
-                    binding=0,
-                    visibility=(wgpu.ShaderStage.VERTEX |
-                                wgpu.ShaderStage.FRAGMENT),
-                    buffer=wgpu.BufferBindingLayout(
-                        type='uniform',
-                    ),
-                ),
-            ],
+                ],
+            )
         )
 
         self.uv_bind_group = device.create_bind_group(
             label=self.make_label('uv bind group'),
-            layout=uv_layout,
+            layout=self.pipeline.get_bind_group_layout(0),
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
@@ -104,39 +94,13 @@ class DrawingPass(RenderPass):
 
         self.uniforms_bind_group = device.create_bind_group(
             label=self.make_label('uniforms bind group'),
-            layout=uniforms_layout,
+            layout=self.pipeline.get_bind_group_layout(1),
             entries=[
                 wgpu.BindGroupEntry(
                     binding=0,
                     resource=self.uniform_buffer.resource_descriptor(),
                 ),
             ],
-        )
-
-        pipeline_layout=device.create_pipeline_layout(
-            label=self.make_label('pipeline layout'),
-            bind_group_layouts=[
-                uv_layout,
-                uniforms_layout,
-            ]
-        )
-
-        self.pipeline = device.create_render_pipeline(
-            label=self.make_label('pipeline'),
-            layout=pipeline_layout,
-            vertex=wgpu.VertexState(
-                module=shader_module,
-            ),
-            fragment=wgpu.FragmentState(
-                entry_point='fragment_shader',
-                module=shader_module,
-                targets=[
-                    wgpu.ColorTargetState(
-                        blend=self._choose_blend_mode(),
-                        format=self.output.format,
-                    ),
-                ],
-            )
         )
 
         self.pass_descriptor = wgpu.RenderPassDescriptor(
