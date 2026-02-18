@@ -27,10 +27,10 @@ class Pass(ABC):
         ...
 
     @abstractmethod
-    def instantiate(self):
+    def instantiate(self, driver):
         ...
 
-    def resize(self, new_size):
+    def resize(self, device, new_size):
         print(f'resize not handled by pass {self.name}')
         pass
 
@@ -52,7 +52,6 @@ class Pass(ABC):
 
 # I can refactor creation of shader, buffer, texture(?)
 # into Pass or RenderPass, I think.
-# 
 
 class ComputePass(Pass):
     ...

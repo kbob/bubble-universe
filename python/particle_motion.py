@@ -125,7 +125,7 @@ class ParticleMotionPass(ComputePass):
         # TO DO: update uniforms
         self.uniform_buffer.write_buffer(device, self._uniforms.as_data())
 
-        workgroup_count = ceil(Defaults.SEQ_COUNT / WORKGROUP_SIZE)
+        workgroup_count = ceil(self._uniforms.seq_count / WORKGROUP_SIZE)
         cpass = encoder.begin_compute_pass(**self.pass_descriptor)
         cpass.set_pipeline(self.pipeline)
         cpass.set_bind_group(0, self.uv_bind_group)

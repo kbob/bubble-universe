@@ -11,14 +11,6 @@ class VideoOutputFile:
         self.stream.width = resolution[0]
         self.stream.pix_fmt = pix_fmt
 
-        # w, h = resolution
-        # a = np.arange(h * w * 4, dtype='uint8').reshape((h, w, 4))
-        # f = av.VideoFrame.from_ndarray(a, format='rgba')
-        # for packet in self.stream.encode(f):
-        #     self.container.mux(packet)
-
-        # self.append_frame(a)
-
     def append_frame(self, frame):
         assert isinstance(frame, np.ndarray)
         frame = av.VideoFrame.from_ndarray(frame, format='rgba')
@@ -26,7 +18,6 @@ class VideoOutputFile:
             self.container.mux(packet)
 
     def close(self):
-        print(f'video file close')
         for packet in self.stream.encode():
             self.container.mux(packet)
         self.container.close()

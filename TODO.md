@@ -4,20 +4,24 @@
 * &#x2705; compute shader for particles
 * &#x2705; M and N independent
 * &#x2705; reimplement in Python and wgpu-py
-* restructure wgpu initialization as a rendergrapha
-* image output and video output
-  - ??? Rust?
-  - ??? wgpu-py + PIL?
-    + and Jupyter too?
+* &#x2705; restructure wgpu initialization as a rendergraph
+* &#x2705; ~~image output and~~ video output
+  - &#x2705; wgpu-py + numpy + PyAV
 * postprocessing
-  - trails
   - HDR + tone mapping
   - bloom
   - lens flare
+  - trails
 * colors
   - classic RGB
   - HSV colors
   - animated colormap
+  - color/gradient the background outside the circle
+  - color schemes
+    + vaporwave
+    + midnight
+    + fiesta
+* MSAA?
 * 3D
   - perspective camera
   - rotation

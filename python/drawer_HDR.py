@@ -6,7 +6,7 @@ from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
 
-class DrawingPass(RenderPass):
+class DrawingPassHDR(RenderPass):
 
 
     class _Parameters:
@@ -23,7 +23,7 @@ class DrawingPass(RenderPass):
         seq_length: u32 = Defaults.SEQ_LENGTH
 
 
-    def __init__(self, name='drawing'):
+    def __init__(self, name='drawing HDR'):
         super().__init__(name)
         self._parameters = self._Parameters()
         self.uvs = None
@@ -128,7 +128,7 @@ class DrawingPass(RenderPass):
                 module=shader_module,
             ),
             fragment=wgpu.FragmentState(
-                entry_point='fragment_shader',
+                entry_point='fragment_shader_HDR',
                 module=shader_module,
                 targets=[
                     wgpu.ColorTargetState(

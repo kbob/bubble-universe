@@ -202,7 +202,7 @@ class Texture(Resource):
             ),
             size=data_view.nbytes,
         )
-    
+
     def read_texture(self, device):
         # device.queue.read_texture(self.current_texture())
         return device.queue.read_texture(
@@ -228,12 +228,12 @@ class CanvasTexture(Texture):
 
         shape = context.physical_size + (4, )
         super().__init__(name, format, shape, writable=True)
-        self.context = context   
+        self.context = context
 
     def instantiate(self, device):
         assert self.context is not None
         return 'placeholder - canvas requires no instantiation'
-    
+
     def resource_descriptor(self):
         assert self.context is not None
         return 'placeholder - current view is found at execute time'
@@ -258,7 +258,7 @@ class CanvasTexture(Texture):
 ## Sampler
 
 class Sampler(Resource):
-    
+
     def __init__(self, name):
         super().__init__(name)
         self.sampler = None

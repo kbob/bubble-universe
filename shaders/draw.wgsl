@@ -54,7 +54,7 @@ struct InterStage {
 //  - trims particle to a circle, transparent near edges
 //  - color is rgb(i, j, 99)
 
-@fragment fn fragment_shader(in: InterStage) -> @location(0) vec4f {
+fn fragment_color(in: InterStage) -> vec4f {
 
   let U = uniforms;
 
@@ -75,4 +75,14 @@ struct InterStage {
   }
 
   return vec4f(r*a, g*a, b*a, a);
+}
+
+@fragment fn fragment_shader(in: InterStage) -> @location(0) vec4f {
+  let rgba = fragment_color(in);
+  return rgba;
+}
+
+@fragment fn fragment_shader_HDR(in: InterStage) -> @location(0) vec4f {
+  let rgba = fragment_color(in);
+  return rgba;
 }

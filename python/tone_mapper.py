@@ -3,57 +3,26 @@ import wgpu
 from passes import Access, Binding, RenderPass
 from resources import Sampler
 
-shader_source = '''
-    @group(0) @binding(0) var in_color: texture_2d<f32>;
-    @group(0) @binding(1) var in_sampler: sampler;
+class ToneMapPass(RenderPass):
 
-    struct InterStage {
-        @builtin(position) position: vec4f,
-        @location(0) texcoord: vec2f,
-    };
+    def __init__(self, name='tone mapping'):
 
-    @vertex fn vertex_shadder(
-        @builtin(vertex_index) vertex_index: u32,
-    ) -> InterStage {
-
-        var pos = array(
-            vec2f(-1.0, -1.0),
-            vec2f(-1.0,  3.0),
-            vec2f( 3.0, -1.0),
-        );
-
-        let xy = pos[vertex_index];
-
-        var out: InterStage;
-        out.position = vec4f(xy, 0.0, 1.0);
-        out.texcoord = xy * vec2f(0.5, -0.5) + vec2f(0.5);
-        return out;
-    };
-
-    @fragment fn fragment_shader(
-        in: InterStage
-    ) -> @location(0) vec4f {
-        let color = textureSample(in_color, in_sampler, in.texcoord);
-        return vec4f(color);
-    };
-'''
-
-class CopyPass(RenderPass):
-
-    def __init__(self, name='copying'):
         super().__init__(name)
         self.input = None
         self.input_sampler = Sampler(self.make_label('input sampler'))
         self.output = None
+        self.shader_file = 'tone_map.wgsl'
+        self.shader = self.read_shader(self.shader_file)
 
     def bindings(self):
-        assert self.input
-        assert self.output
+        assert self.input is not None
+        assert self.input_sampler is not None
+        assert self.output is not None
         return [
             Binding('input texture', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
-            Binding('output', self.output, Access.RW),
-            ]
+            Binding('output', self.output, Access.RO),
+        ]
 
     def bind_input(self, tex):
         self.input = tex
@@ -64,13 +33,10 @@ class CopyPass(RenderPass):
         return self
 
     def instantiate(self, device):
-        assert self.input
-        assert self.output
-
         # shader
         shader_module = device.create_shader_module(
-            label=self.make_label('shader'),
-            code=shader_source,
+            label=self.make_label(f'shader {self.shader_file}'),
+            code=self.shader,
         )
 
         # pipeline
@@ -102,7 +68,7 @@ class CopyPass(RenderPass):
                 wgpu.BindGroupEntry(
                     binding=1,
                     resource=self.input_sampler.resource_descriptor(),
-                )
+                ),
             ],
         )
 

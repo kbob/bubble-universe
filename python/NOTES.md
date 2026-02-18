@@ -1,3 +1,17 @@
+Adding HDR
+
+Use an rgba16float HDR pixel format.
+
+1. shader.  Change definitions and color calculations.
+2. HDRdrawingPass.
+   - Extra bindings, different texture datatypes.
+   - Change blend mode to add
+3. Extend Texture as needed.
+4. Tone mapping pass.
+
+------
+
+
 Just thinking out loud about wgpu modularity.
 
 I'd like to be able to declare a bunch of buffers and a bunch of render
