@@ -8,7 +8,7 @@
 * &#x2705; ~~image output and~~ video output
   - &#x2705; wgpu-py + numpy + PyAV
 * postprocessing
-  - HDR + tone mapping
+  - &#x2705; HDR + tone mapping
   - bloom
   - lens flare
   - trails

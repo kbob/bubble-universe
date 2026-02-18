@@ -31,7 +31,7 @@ def run(args):
 
     canvas_texture = CanvasTexture('display', context, preferred_format)
 
-    if USE_HDR:
+    if args.hdr:
         bubbler = BubblerHDR()
     else:
         bubbler = Bubbler()
@@ -72,7 +72,7 @@ def run_record(args):
     # init video out
     video_out = VideoOutputFile(args.output, video_res, fps=args.fps)
 
-    if USE_HDR:
+    if args.hdr:
         bubbler = BubblerHDR()
     else:
         bubbler = Bubbler()
@@ -115,14 +115,24 @@ def build_argparser():
 
     # Main parser and global  args
     parser = argparse.ArgumentParser(
+        prefix_chars='-+',
+        allow_abbrev=True,
+
         description='Explore the bubble universe',
     )
     # parser.add_argument(
     #     '-v', '--verbose',
     #     action='count',
-
+    #
     #     help='show actions (repeat for more)',
     # )
+    parser.add_argument(
+        '+h', '--no-hdr',
+        dest='hdr',
+        action='store_false',
+
+        help='do not render in high dynamic range (HDR)'
+    )
     subparsers = parser.add_subparsers(
         dest='cmd',
 
