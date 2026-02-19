@@ -15,12 +15,12 @@ I'll get to learn a little about web front end development, CSS,
 DOM, page animation, etc.
 
 Meanwhile, I want the Python version to become a scriptable toolkit
-for deeper customization.  I also want to give it direct image and
-video output so I don't have to rely on screen captures to publish
-pretty pictures.
+for deeper customization.  It is gradually getting features, it can
+record directly to a video file, and many parameters are changeable
+in the code.
 
-But right now I just have two minimal implementations that run on the
-GPU.
+The original single-file Python version is still here
+at `python/bub.py`, too.
 
 # Running the Javascript Version
 
@@ -43,9 +43,32 @@ Vivaldi on MacOS.
 
 Create a Python venv with the dependencies installed.  The script
 `tools/create-venv.sh` will do it.  Activate the venv, then from
-the top directory of this repository run `python python/bub.py`.
+the top directory of this repository run `python python/main.py`.
 
     $ sh tools/create-venv.sh
     $ source venv/bin/activate
-    ((venv) ) $ python bub/bub.py
+    ((venv) ) $ python python/main.py --help
+    usage: main.py [-h] [+h] Command ...
+
+    Explore the bubble universe
+
+    options:
+    -h, --help    show this help message and exit
+    +h, --no-hdr  do not render in high dynamic range (HDR)
+
+    Subcommands:
+    Command       Action
+        record      record video to a file
+
+
+# Running the original Python version
+
+This is feature-compatible with the Javascript version
+(*i.e.*, no features.)
+
+As above, you need to use the Python venv.
+
+    $ sh tools/create-venv.sh    # if you haven't already
+    $ source venv/bin/activate
+    ((venv) ) $ python python/bub.py
 
