@@ -77,6 +77,7 @@ def run_record(args):
         bubbler = BubblerHDR()
     else:
         bubbler = Bubbler()
+    bubbler.update_parameters(fps=args.fps)
     bubbler.build_render_graph(device, [video_texture, canvas_texture])
 
     frame_num = 0

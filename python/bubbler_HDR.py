@@ -17,6 +17,7 @@ class BubblerHDR:
     class Parameters:
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
+        fps: float = MAX_FPS
         speed: float = Defaults.SPEED
         r: float = Defaults.R
         particle_size: float = Defaults.PARTICLE_SIZE
@@ -35,6 +36,7 @@ class BubblerHDR:
         self,
         seq_count=None,
         seq_length=None,
+        fps=None,
         speed=None,
         r=None,
         particle_size=None,
@@ -152,7 +154,7 @@ class BubblerHDR:
 
         # Next!
 
-        self._inc_time(1 / MAX_FPS)
+        self._inc_time(1 / self._parameters.fps)
 
 
     @property

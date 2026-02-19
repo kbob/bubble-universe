@@ -16,6 +16,7 @@ class Bubbler:
     class Parameters:
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
+        fps: float = MAX_FPS
         speed: float = Defaults.SPEED
         r: float = Defaults.R
         particle_size: float = Defaults.PARTICLE_SIZE
@@ -34,6 +35,7 @@ class Bubbler:
         self,
         seq_count=None,
         seq_length=None,
+        fps=None,
         speed=None,
         r=None,
         particle_size=None,
@@ -56,12 +58,12 @@ class Bubbler:
 
         # Create resources
 
+        render_size = outputs[0].current_size()
         self.uvs = StorageBuffer(
             name='uvs',
             type_=vec2f,
             shape=(MAX_SEQ_COUNT, MAX_SEQ_LENGTH),
         )
-        render_size = outputs[0].current_size()
         self._last_size = render_size
         if self._is_multi_output:
             self.image_texture = Texture(
@@ -137,7 +139,7 @@ class Bubbler:
 
         # Next!
 
-        self._inc_time(1 / MAX_FPS)
+        self._inc_time(1 / self._parameters.fps)
 
 
     @property
