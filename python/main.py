@@ -41,8 +41,6 @@ def run(args):
     bubbler.build_render_graph(device, [canvas_texture])
 
     def draw_frame():
-        # bubbler.update_parameters(speed=0)
-        # bubbler.update_parameters(seq_count=5, seq_length=5, particle_size=40, speed=0)
         bubbler.draw_frame()
 
     canvas.request_draw(draw_frame)
@@ -126,12 +124,6 @@ def build_argparser():
 
         description='Explore the bubble universe',
     )
-    # parser.add_argument(
-    #     '-v', '--verbose',
-    #     action='count',
-    #
-    #     help='show actions (repeat for more)',
-    # )
     parser.add_argument(
         '+h', '--no-hdr',
         dest='hdr',

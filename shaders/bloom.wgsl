@@ -57,29 +57,6 @@ struct InterStage {
     return out;
 }
 
-// // fn triangle_vertex(vertex_index: u32, size: f32) -> vec2f {
-
-// //     var pos = array<vec2f, 3>(
-// //         vec2f(-1.0, -1.0),
-// //         vec2f(-1.0,  3.0),
-// //         vec2f( 3.0, -1.0),
-// //     );
-
-// //     return size * pos[vertex_index];
-// // }
-
-// // @vertex fn downsampler_vertex_shader(
-// //     @builtin(vertex_index) vertex_index: u32,
-// // ) -> InterStage {
-
-// //     // let U = uniforms;
-// //     let xy = triangle_vertex(vertex_index, 1.0);
-// //     var out: InterStage;
-// //     out.position = vec4f(xy, 0.0, 1.0);
-// //     out.texcoord = xy * vec2f(0.5, -0.5) + vec2f(0.5);
-// //     return out;
-// // }
-
 @fragment fn downsampler_fragment_shader(
     in: InterStage
 ) -> @location(0) vec4f {
@@ -90,8 +67,6 @@ struct InterStage {
     let y = in.texcoord.y;
     let dx = 1.0 / U.viewport_size[0];
     let dy = 1.0 / U.viewport_size[1];
-    // let dx: f32 = 0.0007407407407407407;
-    // let dy: f32 = 0.000925925925925926;
     let a = textureSample(C, S, vec2f(x - 2. * dx, y + 2. * dy)).rgb;
     let b = textureSample(C, S, vec2f(x,           y + 2. * dy)).rgb;
     let c = textureSample(C, S, vec2f(x + 2. * dx, y + 2. * dy)).rgb;
@@ -115,9 +90,6 @@ struct InterStage {
     downsample += 0.0625  * (b + d + f + h);
     downsample += 0.125   * (j + k + l + m);
     downsample += 0.125   * e;
-    // downsample *= 7.0;      // ???
-
-    // downsample = a;
 
     return vec4f(downsample.rgb, 1.0);
 }
@@ -155,22 +127,6 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
     let y = in.texcoord.y;
     let dx = U.filter_radius;
     let dy = U.filter_radius;
-    // let a = textureSample(C, S, vec2f(x - dx, y + dy)).rgb;
-    // let b = textureSample(C, S, vec2f(x     , y + dy)).rgb;
-    // let c = textureSample(C, S, vec2f(x + dx, y + dy)).rgb;
-
-    // let d = textureSample(C, S, vec2f(x - dx, y     )).rgb;
-    // let e = textureSample(C, S, vec2f(x     , y     )).rgb;
-    // let f = textureSample(C, S, vec2f(x + dx, y     )).rgb;
-
-    // let g = textureSample(C, S, vec2f(x - dx, y - dy)).rgb;
-    // let h = textureSample(C, S, vec2f(x     , y - dy)).rgb;
-    // let i = textureSample(C, S, vec2f(x + dx, y - dy)).rgb;
-
-    // var upsample: vec3f = vec3f(0.0);
-    // upsample += 0.0625 * (a + c + g + i);
-    // upsample += 0.125  * (b + d + f + h);
-    // upsample += 0.5    * (e);
     let upsample = blurred(C, S, x, y, dx, dy);
 
     return vec4f(upsample.rgb, 1.0);
@@ -192,8 +148,13 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
     let a = textureSample(C, CS, xy);
     let b = blurred(B, BS, x, y, dx, dy);
     var mx = mix(a.rgb, b.rgb, U.bloom_strength);
+
+    // // uncomment to turn the particles black
     // mx *= smoothstep(-0.1, 0.0, -(a.r + a.g + a.b));
+
+    // // uncomment out to make the particles disappear
     // mx = b * U.bloom_strength;
+
     return vec4f(mx, 1.0);
 
 

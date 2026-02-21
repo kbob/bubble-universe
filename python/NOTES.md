@@ -42,6 +42,17 @@ RenderGraph can walk the graph, resize and rebind as needed.
 There are weird cases,though. For example, `Bloomer` might want to
 change the MIP depth when resized.
 
+For now, I'll have Bubbler resize passes explicitly and Bloomer
+will resize its resources and subpasses.
+
+But there should be a "rebuild bind group if changed" thing.
+Imagine a `resource_changed` method which calls a `binding_changed`
+or `attachment_changed`.  They rebuild the bind group/color attachment.
+
+ 1. Split bindings into bindings and attachments.
+ 2. Write Pass.create_bind_group_entry().
+ 
+
 ## Resources, Bindings, Attachments
 Should distinguish between bindings and attachments.
 the `bindings` method should be renamed `resources` and return

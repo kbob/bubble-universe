@@ -46,21 +46,8 @@ class ToneMapPass(RenderPass):
         # pipeline
         self.pipeline = self.create_pipeline(device, shader_module)
 
-        # bind groups
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                ),
-            ],
-        )
+        # # bind group(s)
+        self.create_input_bind_group(device)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -70,26 +57,14 @@ class ToneMapPass(RenderPass):
                     clear_value=(0, 0, 0, 1),
                     load_op='clear',
                     store_op='store',
-                    view=...,   # set in execute()
+                    view=self.output.current_view(),
                 ),
             ],
         )
 
     def resize(self, device, size):
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group (resized)'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                )
-            ],
-        )
+        self.create_input_bind_group(device)
+        self.pass_descriptor.color_attachments[0].view = self.output.current_view()
 
     def execute(self, device, encoder):
 
@@ -106,3 +81,21 @@ class ToneMapPass(RenderPass):
         rpass.set_bind_group(0, self.input_bind_group)
         rpass.draw(vertex_count)
         rpass.end()
+
+    def create_input_bind_group(self, device):
+        assert self.pipeline
+        self.input_bind_group = device.create_bind_group(
+            label=self.make_label('input bind group'),
+            layout=self.pipeline.get_bind_group_layout(0),
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=0,
+                    resource=self.input.current_view(),
+                ),
+                wgpu.BindGroupEntry(
+                    binding=1,
+                    resource=self.input_sampler.resource_descriptor(),
+                ),
+            ],
+        )
+        return self

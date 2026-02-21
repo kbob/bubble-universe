@@ -6,10 +6,10 @@ frame = 0
 
 class RenderGraph:
 
-    def __init__(self, device, passes):
+    def __init__(self, device, passes, external_resources=[]):
 
         # Find and instantiate all bound resources
-        resources = {}
+        resources = {r: None for r in external_resources}
         for pass_ in passes:
             for b in pass_.bindings():
                 resource = b.resource
@@ -30,18 +30,6 @@ class RenderGraph:
             label='rendergraph command encoder'
         )
         for pass_ in self.passes:
-            from light_bloom import BloomSubgraph
-            from copier import CopyPass
-            # print(f'{frame = }')
-            # if isinstance(pass_, BloomSubgraph):
-            #     if frame % 2 == 0:
-            #         # print('    no bloom')
-            #         continue
-            if isinstance(pass_, CopyPass):
-                # from constants import MAX_FPS
-                # if frame % (2 * MAX_FPS) < MAX_FPS:
-                    # print('    no copy')
-                    continue
             pass_.execute(device, encoder)
         frame += 1
         command_buffer = encoder.finish()

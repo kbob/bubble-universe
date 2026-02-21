@@ -204,7 +204,6 @@ class Texture(Resource):
         )
 
     def read_texture(self, device):
-        # device.queue.read_texture(self.current_texture())
         return device.queue.read_texture(
             source={
                 'texture': self.current_texture(),

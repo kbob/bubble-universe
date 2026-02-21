@@ -43,7 +43,7 @@ class CopyPass(RenderPass):
     def __init__(self, name='copying'):
         super().__init__(name)
         self.input = None
-        self.input_sampler = Sampler(self.make_label('input sampler'))
+        self.input_sampler = Sampler(f'{name} input sampler')
         self.output = None
 
     def bindings(self):
@@ -54,7 +54,7 @@ class CopyPass(RenderPass):
             Binding('input texture', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
             Binding('output', self.output, Access.RW),
-            ]
+        ]
 
     def bind_input(self, tex):
         self.input = tex
@@ -79,20 +79,7 @@ class CopyPass(RenderPass):
         self.pipeline = self.create_pipeline(device, shader_module)
 
         # bind groups
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                )
-            ],
-        )
+        self.create_input_bind_group(device)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -108,20 +95,7 @@ class CopyPass(RenderPass):
         )
 
     def resize(self, device, size):
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group (resized)'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                )
-            ],
-        )
+        self.create_input_bind_group(device)
 
     def execute(self, device, encoder):
 
@@ -138,3 +112,20 @@ class CopyPass(RenderPass):
         rpass.set_bind_group(0, self.input_bind_group)
         rpass.draw(vertex_count)
         rpass.end()
+
+    def create_input_bind_group(self, device):
+        assert self.pipeline
+        self.input_bind_group = device.create_bind_group(
+            label=self.make_label('input bind group'),
+            layout=self.pipeline.get_bind_group_layout(0),
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=0,
+                    resource=self.input.current_view(),
+                ),
+                wgpu.BindGroupEntry(
+                    binding=1,
+                    resource=self.input_sampler.resource_descriptor(),
+                )
+            ],
+        )

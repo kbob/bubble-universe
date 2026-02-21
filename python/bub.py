@@ -489,11 +489,6 @@ def run_app():
     preferred_format = context.get_preferred_format(adapter)
     context.configure(device=device, format=preferred_format)
 
-    # @canvas.add_event_handler('resize')
-    # def handle_event(event):
-    #     print(f'Event: {event["event_type"]!r}, ',
-    #           f'size = {canvas.get_physical_size()}')
-
     bubbler = Bubbler()
     bubbler.init_graphics(device, preferred_format)
     parameters = BubblerParameters()

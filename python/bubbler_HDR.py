@@ -89,12 +89,6 @@ class BubblerHDR(Parameterized):
                 .bind_input(self.HDR_image)
                 .bind_color_output(self.bloomed_image)
         )
-        # self.copier = (
-        #     CopyPass()
-        #         .bind_input(self.HDR_image)
-        #         .bind_color_output(self.bloomed_image)
-        # )
-
         self.mapper = (
             ToneMapPass()
                 .bind_input(self.bloomed_image)
@@ -104,7 +98,6 @@ class BubblerHDR(Parameterized):
             self.particles,
             self.drawer,
             self.bloomer,
-            # self.copier,
             self.mapper,
         ]
 
@@ -142,15 +135,12 @@ class BubblerHDR(Parameterized):
         size = self.resize_controller.current_size()
         if self._last_size != size:
             self._last_size = size
-            self.HDR_image.resize(self.device, size)
-            self.drawer.bind_color_output(self.HDR_image)
-            self.bloomer.bind_input(self.HDR_image)
-            self.bloomed_image.resize(self.device, size)
-            self.bloomer.bind_color_output(self.bloomed_image)
-            # self.copier.bind_input(self.HDR_image)
-            # self.copier.bind_output(self.bloomed_image)
-            self.mapper.bind_input(self.bloomed_image)
 
+            # Resize textures
+            self.HDR_image.resize(self.device, size)
+            self.bloomed_image.resize(self.device, size)
+
+            # Resize passes
             self.bloomer.resize(self.device, size)
             self.mapper.resize(self.device, size)
             if self._is_multi_output:

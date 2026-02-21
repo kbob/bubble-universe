@@ -34,7 +34,7 @@ class Pass(ABC):
 
     def resize(self, device, new_size):
         print(f'resize not handled by pass {self.name}')
-        pass
+        return self
 
     @abstractmethod
     def execute(self, device, encoder):
@@ -115,7 +115,6 @@ class Subgraph(Pass):
                 assert resource, (f'pass {pass_.name!r} '
                                   f'is missing resource {b.name!r}')
                 if resource not in resources:
-                    print(f'instantiate_subgraph: {resource.name = }')
                     resources[resource] = resource.instantiate(device)
 
         # Instantiate all passes

@@ -49,5 +49,5 @@
 ## Bloom changes
 
 * Redesign subgraph construction
-* Use float32
+* &#x274c; Use float32
 * Does upsampler `filter_radius` need to be a vec2f?
