@@ -18,7 +18,7 @@ from video import VideoOutputFile
 
 def run(args):
     adapter = wgpu.gpu.request_adapter_sync()
-    device = adapter.request_device_sync()
+    device = adapter.request_device_sync(required_features=['float32-blendable', 'float32-filterable'])
 
     canvas = RenderCanvas(
         size=Defaults.CANVAS_SIZE,
@@ -39,6 +39,8 @@ def run(args):
     bubbler.build_render_graph(device, [canvas_texture])
 
     def draw_frame():
+        # bubbler.update_parameters(speed=0)
+        # bubbler.update_parameters(seq_count=5, seq_length=5, particle_size=40, speed=0)
         bubbler.draw_frame()
 
     canvas.request_draw(draw_frame)

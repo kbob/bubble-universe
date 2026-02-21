@@ -80,13 +80,13 @@ class Bubbler:
 
         self.particles = (
             ParticleMotionPass()
-            .bind_uvs(self.uvs)
+                .bind_uvs(self.uvs)
         )
 
         self.drawer = (
             DrawingPass()
-            .bind_uvs(self.uvs)
-            .bind_color_output(drawing_dest)
+                .bind_uvs(self.uvs)
+                .bind_color_output(drawing_dest)
         )
         passes = [
             self.particles,

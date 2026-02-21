@@ -259,14 +259,18 @@ class CanvasTexture(Texture):
 
 class Sampler(Resource):
 
-    def __init__(self, name):
+    def __init__(self, name, min_filter=None, mag_filter=None):
         super().__init__(name)
         self.sampler = None
+        self.min_filter=min_filter
+        self.mag_filter=mag_filter
 
     def instantiate(self, device):
         if self.sampler is None:
             self.sampler = device.create_sampler(
                 label=self.name,
+                min_filter=self.min_filter,
+                mag_filter=self.mag_filter,
             )
         return self.sampler
 

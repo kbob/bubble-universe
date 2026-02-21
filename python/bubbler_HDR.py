@@ -4,6 +4,7 @@ from inspect import get_annotations
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
+from light_bloom import BloomSubgraph
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
@@ -66,7 +67,13 @@ class BubblerHDR:
             shape=(MAX_SEQ_COUNT, MAX_SEQ_LENGTH),
         )
         self.HDR_image = Texture(
-            name='HDR image',
+            name='HDR image pre-bloom',
+            format=HDR_PIXEL_FORMAT,
+            shape=(*render_size, 4),
+            renderable=True,
+        )
+        self.bloomed_image = Texture(
+            name='HDR image post-bloom',
             format=HDR_PIXEL_FORMAT,
             shape=(*render_size, 4),
             renderable=True,
@@ -87,21 +94,39 @@ class BubblerHDR:
 
         self.particles = (
             ParticleMotionPass()
-            .bind_uvs(self.uvs)
+                .bind_uvs(self.uvs)
         )
         self.drawer = (
             DrawingPass()
-            .bind_uvs(self.uvs)
-            .bind_color_output(self.HDR_image)
+                .bind_uvs(self.uvs)
+                .bind_color_output(self.HDR_image)
         )
+        self.bloomer = (
+            BloomSubgraph()
+                .bind_input(self.HDR_image)
+                .bind_color_output(self.bloomed_image)
+        )
+        # self.bloomer = (
+        #     CopyPass()
+        #         .bind_input(self.HDR_image)
+        #         .bind_color_output(self.bloomed_image)
+        # )
+        self.copier = (
+            CopyPass()
+                .bind_input(self.HDR_image)
+                .bind_color_output(self.bloomed_image)
+        )
+
         self.mapper = (
             ToneMapPass()
-            .bind_input(self.HDR_image)
-            .bind_color_output(tone_mapping_dest)
+                .bind_input(self.bloomed_image)
+                .bind_color_output(tone_mapping_dest)
         )
         passes = [
             self.particles,
             self.drawer,
+            self.bloomer,
+            self.copier,
             self.mapper,
         ]
 
@@ -141,7 +166,14 @@ class BubblerHDR:
             self._last_size = size
             self.HDR_image.resize(self.device, size)
             self.drawer.bind_color_output(self.HDR_image)
-            self.mapper.bind_input(self.HDR_image)
+            self.bloomer.bind_input(self.HDR_image)
+            self.bloomed_image.resize(self.device, size)
+            self.bloomer.bind_color_output(self.bloomed_image)
+            self.copier.bind_input(self.HDR_image)
+            self.copier.bind_output(self.bloomed_image)
+            self.mapper.bind_input(self.bloomed_image)
+
+            self.bloomer.resize(self.device, size)
             self.mapper.resize(self.device, size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, size)

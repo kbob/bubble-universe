@@ -56,19 +56,28 @@ class ComputePass(Pass):
 
 class RenderPass(Pass):
 
-    @abstractmethod
-    def bind_color_output(self, tex):
-        ...
+    # @abstractmethod
+    # def bind_color_output(self, tex):
+    #     ...
 
-    def create_pipeline(self, device, shader_module, blend=None):
+    def create_pipeline(
+        self,
+        device,
+        shader_module,
+        vertex_entry=None,
+        fragment_entry=None,
+        blend=None,
+    ):
         return device.create_render_pipeline(
             label=self.make_label('pipeline'),
             layout='auto',
             vertex=wgpu.VertexState(
                 module=shader_module,
+                entry_point=vertex_entry,
             ),
             fragment=wgpu.FragmentState(
                 module=shader_module,
+                entry_point=fragment_entry,
                 targets=[
                     wgpu.ColorTargetState(
                         blend=blend,
@@ -77,3 +86,39 @@ class RenderPass(Pass):
                 ],
             ),
         )
+
+class Subgraph(Pass):
+
+    """
+        A RenderGraph node
+        that does not encapsulate a wgpu pipeline-render pass.
+    """
+
+    # required:
+    # bindings(self)
+    # instantiate(self, device)
+    # execute(self, device, encoder)
+
+    # optional:
+    # _Parameters
+    # __init__(self, ...)
+    # update_parameters(self, ...)
+    # resize(self, device, size)
+
+    def instantiate_subgraph(self, device, passes, external_resources):
+
+        # Find and instantiate all bound resources
+        resources = {r: None for r in external_resources}
+        for pass_ in passes:
+            for b in pass_.bindings():
+                resource = b.resource
+                assert resource, (f'pass {pass_.name!r} '
+                                  f'is missing resource {b.name!r}')
+                if resource not in resources:
+                    print(f'instantiate_subgraph: {resource.name = }')
+                    resources[resource] = resource.instantiate(device)
+
+        # Instantiate all passes
+        self.passes = {}
+        for pass_ in passes:
+            self.passes[pass_] = pass_.instantiate(device)

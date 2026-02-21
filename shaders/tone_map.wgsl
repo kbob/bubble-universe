@@ -30,21 +30,23 @@ const luminance_weights = vec3f(0.2126, 0.7152, 0.0722);
 const white = 4.0;
 const boost = 4.0;
 
-fn lerp3f(frac: f32, a: vec3f, b: vec3f) -> vec3f {
-    return frac * b + (1 - frac) * a;
-};
+// fn lerp3f(frac: f32, a: vec3f, b: vec3f) -> vec3f {
+//     return frac * b + (1 - frac) * a;
+// };
 
 fn luminance(c: vec3f) -> f32 {
     return dot(c, luminance_weights);
 };
 
 fn saturation(c: vec3f) -> f32 {
-    let avg = 0.333 * (c.r + c.g + c.b);
+    // let avg = 0.333 * (c.r + c.g + c.b);
+    let mn = min(min(c.r, c.g), c.b);
     let mx = max(max(c.r, c.g), c.b);
     if mx == 0.0 {
         return 0.0;
     }
-    return (mx - avg) / mx;
+    return (mx - mn) / mx;
+    // return (mx - avg) / mx;
 };
 
 fn reinhard_luminance_tone_map(c: vec3f) -> vec3f {
@@ -62,7 +64,8 @@ fn saturation_luminance_tone_map(c: vec3f) -> vec3f {
     let s = saturation(c);
     let rhl = reinhard_luminance_tone_map(c);
 
-    return lerp3f(s, rhl, c);
+    // return lerp3f(s, rhl, c);
+    return mix(rhl, c, 0.5 * s);
 }
 
 @fragment fn fragment_shader(

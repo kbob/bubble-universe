@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from dataclasses import dataclass
-from math import sin, cos, tau
+from math import ceil, cos, sin, tau
 import os.path
 import re
 
@@ -308,7 +308,8 @@ class Bubbler:
             entries=[
                 wgpu.BindGroupLayoutEntry(
                     binding=0,
-                    visibility=wgpu.ShaderStage.VERTEX | wgpu.ShaderStage.FRAGMENT,
+                    visibility=(wgpu.ShaderStage.VERTEX |
+                                wgpu.ShaderStage.FRAGMENT),
                     buffer=wgpu.BufferBindingLayout(
                         type='uniform',
                     ),
@@ -435,7 +436,9 @@ class Bubbler:
 
         # Set the drawing pass's uniforms
         du_uniforms = DrawingUniforms(
-            particle_size=adjust_for_aspect(parameters.particle_size / CANVAS_SIZE[1]),
+            particle_size=adjust_for_aspect(
+                parameters.particle_size / CANVAS_SIZE[1],
+            ),
             scale=adjust_for_aspect((1 - BORDER) / 2),
             seq_count=parameters.seq_count,
             seq_length=parameters.seq_length,
@@ -446,7 +449,7 @@ class Bubbler:
         encoder = device.create_command_encoder(label='the encoder')
 
         # Add the particle compute pass to the encoder
-        workgroup_count = (parameters.seq_count + WORKGROUP_SIZE - 1) // WORKGROUP_SIZE
+        workgroup_count = ceil(parameters.seq_count / WORKGROUP_SIZE)
         particle_pass = encoder.begin_compute_pass(label='particle pass')
         particle_pass.set_pipeline(self._particle_pipeline)
         particle_pass.set_bind_group(0, self._uv_rw_bind_group)
@@ -488,7 +491,8 @@ def run_app():
 
     # @canvas.add_event_handler('resize')
     # def handle_event(event):
-    #     print(f'Event: {event["event_type"]!r}, size = {canvas.get_physical_size()}')
+    #     print(f'Event: {event["event_type"]!r}, ',
+    #           f'size = {canvas.get_physical_size()}')
 
     bubbler = Bubbler()
     bubbler.init_graphics(device, preferred_format)

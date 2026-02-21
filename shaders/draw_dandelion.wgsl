@@ -40,7 +40,23 @@ struct InterStage {
   let uv = uv_buffer[uv_index];
   let pt = points[k];
 
-  let xy = U.scale * uv + U.particle_size * pt;
+  let r = sqrt(dot(uv, uv));
+  let theta = atan2(uv[1], uv[0]);
+  let co = cos(theta);
+  let si = sin(theta);
+  var spt = pt;
+  if pt[0] < 0.0 {
+    spt[0] *= 0.2 * r / U.particle_size[0];
+    spt[1] *= 0.1;
+  }
+  var tpt = vec2f(
+    co * spt[0] - si * spt[1],
+    si * spt[0] + co * spt[1]);
+  if (i % 5u) != 4u {
+    tpt = vec2f(0.0);
+  }
+
+  let xy = U.scale * uv + U.particle_size * tpt;
 
   var out: InterStage;
   out.pos = vec4f(xy, 0.0, 1.0);
@@ -69,7 +85,6 @@ struct InterStage {
 
   let rad2 = dot(in.pt, in.pt);
   var a = (1.0 - rad2);
-  // a = 1.0;
   if a < 0.01 {
     a = 0.0;
     discard;

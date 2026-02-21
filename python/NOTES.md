@@ -1,4 +1,89 @@
-Adding HDR
+## Bloom
+
+https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom
+
+
+    constants:
+        MIP_LEVELS = 5
+
+    defaults:
+        BLUR_AMOUNT = 0.1  # turn these up a lot for debugging
+        BLUR_SIZE = 0.005
+
+    parameters:
+        mip_levels = 5
+        blur_amount
+        blur_size
+
+    bindings:
+        input
+        output_color
+
+    initialize:
+        # Construct framebuffers, textures
+        size = output.size
+        mip_textures = [
+            Texture(size / 2, ...),
+            Texture(size / 4, ...),
+        ]
+        downsample = RenderPass(...)
+        upsample = RenderPass(...)
+        upsample_mix = RenderPass(...)
+
+    execute:
+        src = input
+        ping, pong = mip_textures
+
+        # recursively downsample
+
+        for i in range(MIP_LEVELS):
+            downsample.update_parameters(size = 2**(-i - 1))
+            downsample.bind_input(src)
+            downsample.bind_output(ping)
+            downsample.execute()
+            src = ping
+            ping, pong = pong, ping # ping-pong the ping pong pair.
+        # Now pong has the smallest mip
+
+        # recursively upsample
+
+        upsample.update_parameters(
+            blur_radius=parameters.blur_radius,
+        )
+        for i in range(MIP_LEVELS, 1, -1):
+            upsample.update_parameters(size=2**-i)
+            upsample.bind_input(src)
+            upsample.bind_output(ping)
+            upsample.execute()
+            src = ping
+            ping, pong = pong, ping # ping-pong the ping pong pair.
+
+        # last upsample pass also mixes into the destination buffer
+        upsample_mix.update_parameters(
+            blur_amount=parameters.blur_amount,
+            blur_radius=parameters.blur_radius,
+        )
+        upsample_mix.bind_image_input(input)
+        upsample_mix.bind_blur_input(src)
+        upsample_mix.bind_output_color(output_color)
+        upsample_mix.execute()
+
+
+To encapsulate, I should define a GenericPass hierarchy: has the
+same interface as Pass but isn't an actual wgpu compute/render pass.        
+
+    class GenericPass(Pass):  # name TBD
+        """A RenderGraph node with bindings that does
+           not encapsulate a wgpu pipeline-renderpass.
+        """
+        # implements bindings, bind_foo, instantiate, execute, resize
+
+GenericPass?  CompositePass?  GraphPass?  Subgraph?
+
+------
+
+
+## Adding HDR
 
 Use an rgba16float HDR pixel format.
 
