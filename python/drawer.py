@@ -31,7 +31,6 @@ class DrawingPass(RenderPass, Parameterized):
         super().__init__(name)
         self.uvs = None
         self.output = None
-        self.uniform_buffer = UniformBuffer('drawing uniforms', self._Uniforms)
         self.shader_file = 'draw.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
@@ -69,6 +68,7 @@ class DrawingPass(RenderPass, Parameterized):
             blend=self._choose_blend_mode(),
         )
 
+        # bind groups
         self.uv_bind_group = device.create_bind_group(
             label=self.make_label('uv bind group'),
             layout=self.pipeline.get_bind_group_layout(0),
@@ -79,23 +79,13 @@ class DrawingPass(RenderPass, Parameterized):
                 ),
             ],
         )
+        self.instantiate_uniforms_bind_group(device, 1)
         # # Need to move ownership of self.pipeline
         # # to RenderPass, then I can factor out create_bind_group()
         # #
         # # And then the whole 'instantiate' can be driven by self.bindings()
         #
         # # self.uv_bind_group = self.create_bind_group(0, 'uv', self.uvs)
-
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=self.pipeline.get_bind_group_layout(1),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uniform_buffer.resource_descriptor(),
-                ),
-            ],
-        )
 
         self.pass_descriptor = wgpu.RenderPassDescriptor(
             label=self.make_label('render pass'),

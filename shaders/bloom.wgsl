@@ -16,13 +16,6 @@ struct USMUniforms {
     bloom_strength: f32,
 };
 
-// For now, put everything into a single Uniforms structure.
-struct Uniforms {
-    viewport_size: vec2f,
-    filter_radius: f32,
-    bloom_strength: f32,
-};
-
 @group(0) @binding(0) var in_color: texture_2d<f32>;
 @group(0) @binding(1) var in_sampler: sampler;
 @group(2) @binding(0) var in_blur: texture_2d<f32>;
@@ -31,7 +24,6 @@ struct Uniforms {
 @group(1) @binding(0) var<uniform> ds_uniforms: DSUniforms;
 @group(1) @binding(0) var<uniform> us_uniforms: USUniforms;
 @group(1) @binding(0) var<uniform> usm_uniforms: USMUniforms;
-@group(1) @binding(0) var<uniform> uniforms: Uniforms;
 
 // All three shaders use the same interstage variables.
 struct InterStage {
@@ -60,7 +52,7 @@ struct InterStage {
 @fragment fn downsampler_fragment_shader(
     in: InterStage
 ) -> @location(0) vec4f {
-    let U = uniforms;
+    let U = ds_uniforms;
     let C = in_color;
     let S = in_sampler;
     let x = in.texcoord.x;
@@ -95,8 +87,6 @@ struct InterStage {
 }
 
 fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> vec3f {
-    // let C = in_color;
-    // let S = in_sampler;
 
     let a = textureSample(T, S, vec2f(x - dx, y + dy)).rgb;
     let b = textureSample(T, S, vec2f(x     , y + dy)).rgb;
@@ -120,7 +110,7 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
 @fragment fn upsampler_fragment_shader(
     in: InterStage
 ) -> @location(0) vec4f {
-    let U = uniforms;
+    let U = us_uniforms;
     let C = in_color;
     let S = in_sampler;
     let x = in.texcoord.x;
@@ -135,7 +125,7 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
 @fragment fn upsample_mixer_fragment_shader(
     in: InterStage
 ) -> @location(0) vec4f {
-    let U = uniforms;
+    let U = usm_uniforms;
     let C = in_color;
     let CS = in_sampler;
     let B = in_blur;
@@ -156,7 +146,4 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
     // mx = b * U.bloom_strength;
 
     return vec4f(mx, 1.0);
-
-
-    // return vec4f(mix(a.rgb, b.rgb, U.bloom_strength), 1.0);
 }

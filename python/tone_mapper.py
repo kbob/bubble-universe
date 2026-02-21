@@ -47,7 +47,7 @@ class ToneMapPass(RenderPass):
         self.pipeline = self.create_pipeline(device, shader_module)
 
         # # bind group(s)
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -63,7 +63,7 @@ class ToneMapPass(RenderPass):
         )
 
     def resize(self, device, size):
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
         self.pass_descriptor.color_attachments[0].view = self.output.current_view()
 
     def execute(self, device, encoder):
@@ -82,7 +82,7 @@ class ToneMapPass(RenderPass):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def create_input_bind_group(self, device):
+    def instantiate_input_bind_group(self, device):
         assert self.pipeline
         self.input_bind_group = device.create_bind_group(
             label=self.make_label('input bind group'),

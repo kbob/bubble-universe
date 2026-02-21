@@ -19,7 +19,6 @@ class ParticleMotionPass(ComputePass):
         super().__init__(name)
         self._uniforms = self._Uniforms()
         self.uvs = None
-        self.uniform_buffer = UniformBuffer('particle uniforms', self._Uniforms)
         self.shader_file='particles.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
@@ -69,19 +68,7 @@ class ParticleMotionPass(ComputePass):
                 ),
             ],
         )
-
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=self.pipeline.get_bind_group_layout(1),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=wgpu.BufferBinding(
-                        buffer=self.uniform_buffer.resource_descriptor(),
-                    ),
-                ),
-            ],
-        )
+        self.instantiate_uniforms_bind_group(device, 1)
 
         self.pass_descriptor = wgpu.ComputePassDescriptor(
             label=self.make_label('compute pass'),

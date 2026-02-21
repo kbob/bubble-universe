@@ -9,7 +9,7 @@
   - &#x2705; wgpu-py + numpy + PyAV
 * postprocessing
   - &#x2705; HDR + tone mapping
-  - bloom
+  - &#x2705; bloom
   - lens flare
   - trails
 * colors
@@ -48,6 +48,6 @@
 
 ## Bloom changes
 
-* Redesign subgraph construction
+* &#x2705; Redesign subgraph construction
 * &#x274c; Use float32
 * Does upsampler `filter_radius` need to be a vec2f?

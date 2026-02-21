@@ -187,17 +187,14 @@ class Shader:
     file: str
     code: str
 
-# common uniforms struct across all three render passes
-class _Uniforms(Uniforms):
-    viewport_size: vec2f = (1, 1)
-    filter_radius: f32 = Defaults.BLOOM_SIZE
-    bloom_strength: f32 = Defaults.BLOOM_AMOUNT
-
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Downsampler
 
 class Downsampler(RenderPass):
+
+    class _Uniforms(Uniforms):
+        viewport_size: vec2f = (1, 1)
 
     def __init__(self, shader):
         super().__init__('bloom downsampler')
@@ -207,7 +204,6 @@ class Downsampler(RenderPass):
             min_filter='linear',
             mag_filter='linear',
         )
-        self.uniform_buffer = UniformBuffer('downsampler uniforms', _Uniforms)
         self.output = None
         self.shader = shader
 
@@ -251,17 +247,8 @@ class Downsampler(RenderPass):
         )
 
         # bind groups
-        self.create_input_bind_group(device)
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=self.pipeline.get_bind_group_layout(1),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uniform_buffer.resource_descriptor(),
-                ),
-            ],
-        )
+        self.instantiate_input_bind_group(device)
+        self.instantiate_uniforms_bind_group(device, 1)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -277,7 +264,7 @@ class Downsampler(RenderPass):
         )
 
     def resize(self, device, size):
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
 
     def execute(self, device, encoder):
         assert self.input is not None
@@ -286,10 +273,9 @@ class Downsampler(RenderPass):
         assert self.output is not None
 
         current_view = self.output.current_view()
-        current_size = current_view.size[:2]
         src_size = self.input.current_view().size[:2]
 
-        uniforms = _Uniforms(
+        uniforms = self._Uniforms(
             viewport_size=src_size,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())        
@@ -304,7 +290,7 @@ class Downsampler(RenderPass):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def create_input_bind_group(self, device):
+    def instantiate_input_bind_group(self, device):
         self.input_bind_group = device.create_bind_group(
             label=self.make_label('input bind group'),
             layout=self.pipeline.get_bind_group_layout(0),
@@ -330,6 +316,9 @@ class Upsampler(RenderPass, Parameterized):
     class Parameters:
         bloom_size: float = Defaults.BLOOM_SIZE
 
+    class _Uniforms(Uniforms):
+        filter_radius: f32
+
     def __init__(self, shader):
         super().__init__('bloom upsampler')
         self.input = None
@@ -338,7 +327,6 @@ class Upsampler(RenderPass, Parameterized):
             min_filter='linear',
             mag_filter='linear',
         )
-        self.uniform_buffer = UniformBuffer('uniforms', _Uniforms)
         self.output = None
         self.shader = shader
 
@@ -390,17 +378,8 @@ class Upsampler(RenderPass, Parameterized):
         )
 
         # create bind groups
-        self.create_input_bind_group(device)
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=self.pipeline.get_bind_group_layout(1),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uniform_buffer.resource_descriptor(),
-                ),
-            ],
-        )
+        self.instantiate_input_bind_group(device)
+        self.instantiate_uniforms_bind_group(device, 1)
 
         # create render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -416,7 +395,7 @@ class Upsampler(RenderPass, Parameterized):
         )
 
     def resize(self, device, size):
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
 
     def execute(self, device, encoder):
         assert self.input is not None
@@ -425,9 +404,8 @@ class Upsampler(RenderPass, Parameterized):
         assert self.output is not None
 
         current_view = self.output.current_view()
-        current_size = current_view.size[:2]
 
-        uniforms = _Uniforms(
+        uniforms = self._Uniforms(
             filter_radius = self._parameters.bloom_size,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())        
@@ -442,7 +420,7 @@ class Upsampler(RenderPass, Parameterized):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def create_input_bind_group(self, device):
+    def instantiate_input_bind_group(self, device):
         self.input_bind_group = device.create_bind_group(
             label=self.make_label('input bind group'),
             layout=self.pipeline.get_bind_group_layout(0),
@@ -469,6 +447,10 @@ class UpsampleMixer(RenderPass, Parameterized):
         bloom_size: float = Defaults.BLOOM_SIZE
         bloom_amount: float = Defaults.BLOOM_AMOUNT
 
+    class _Uniforms(Uniforms):
+        filter_radius: f32 = Defaults.BLOOM_SIZE
+        bloom_strength: f32 = Defaults.BLOOM_AMOUNT
+    
     def __init__(self, shader):
         super().__init__('bloom upsample mixer')
         self.image_input = None
@@ -479,7 +461,6 @@ class UpsampleMixer(RenderPass, Parameterized):
             min_filter='linear',
             mag_filter='linear',
         )
-        self.uniform_buffer = UniformBuffer('uniforms', _Uniforms)
         self.output = None
         self.shader = shader
 
@@ -533,18 +514,9 @@ class UpsampleMixer(RenderPass, Parameterized):
         )
 
         # bind groups
-        self.create_image_input_bind_group(device)
-        self.create_bloom_input_bind_group(device)
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=self.pipeline.get_bind_group_layout(1),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uniform_buffer.resource_descriptor(),
-                ),
-            ],
-        )
+        self.instantiate_image_input_bind_group(device)
+        self.instantiate_bloom_input_bind_group(device)
+        self.instantiate_uniforms_bind_group(device, 1)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -560,8 +532,8 @@ class UpsampleMixer(RenderPass, Parameterized):
         )
 
     def resize(self, device, size):
-        self.create_image_input_bind_group(device)
-        self.create_bloom_input_bind_group(device)
+        self.instantiate_image_input_bind_group(device)
+        self.instantiate_bloom_input_bind_group(device)
 
     def execute(self, device, encoder):
         assert self.image_input is not None
@@ -572,9 +544,8 @@ class UpsampleMixer(RenderPass, Parameterized):
         assert self.output is not None
 
         current_view = self.output.current_view()
-        current_size = current_view.size[:2]
 
-        uniforms = _Uniforms(
+        uniforms = self._Uniforms(
             filter_radius = self._parameters.bloom_size,
             bloom_strength = self._parameters.bloom_amount,
         )
@@ -591,7 +562,7 @@ class UpsampleMixer(RenderPass, Parameterized):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def create_image_input_bind_group(self, device):
+    def instantiate_image_input_bind_group(self, device):
         self.image_input_bind_group = device.create_bind_group(
             label=self.make_label('image input bind group'),
             layout=self.pipeline.get_bind_group_layout(0),
@@ -607,7 +578,7 @@ class UpsampleMixer(RenderPass, Parameterized):
             ],
         )
 
-    def create_bloom_input_bind_group(self, device):
+    def instantiate_bloom_input_bind_group(self, device):
         self.bloom_input_bind_group = device.create_bind_group(
             label=self.make_label('bloom input bind group'),
             layout=self.pipeline.get_bind_group_layout(0),

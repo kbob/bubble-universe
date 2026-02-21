@@ -79,7 +79,7 @@ class CopyPass(RenderPass):
         self.pipeline = self.create_pipeline(device, shader_module)
 
         # bind groups
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
 
         # render pass descriptor
         self.pass_descriptor = wgpu.RenderPassDescriptor(
@@ -95,7 +95,7 @@ class CopyPass(RenderPass):
         )
 
     def resize(self, device, size):
-        self.create_input_bind_group(device)
+        self.instantiate_input_bind_group(device)
 
     def execute(self, device, encoder):
 
@@ -113,7 +113,7 @@ class CopyPass(RenderPass):
         rpass.draw(vertex_count)
         rpass.end()
 
-    def create_input_bind_group(self, device):
+    def instantiate_input_bind_group(self, device):
         assert self.pipeline
         self.input_bind_group = device.create_bind_group(
             label=self.make_label('input bind group'),

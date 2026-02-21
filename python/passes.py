@@ -24,6 +24,14 @@ class Pass(ABC):
         super().__init__()
         self.name = name
 
+        # If subclass has a _Uniforms member, create a uniforms buffer.
+        if hasattr(type(self), '_Uniforms'):
+            U = type(self)._Uniforms
+            self.uniform_buffer = resources.UniformBuffer(
+                name=f'{name} uniforms',
+                data_class=U,
+            )
+
     @abstractmethod
     def bindings(self):
         ...
@@ -51,6 +59,24 @@ class Pass(ABC):
         with open(path) as f:
             return f.read()
 
+    def instantiate_uniforms_bind_group(self, device, layout, binding=0):
+        """
+        create self.uniforms_bind_group.
+        If `layout` is a number, it's used as the group number for auto layout,
+        otherwise it's used as a bind group layout.
+        """
+        if isinstance(layout, int):
+            layout = self.pipeline.get_bind_group_layout(layout)
+        self.uniforms_bind_group = device.create_bind_group(
+            label=self.make_label('uniforms bind group'),
+            layout=layout,
+            entries=[
+                wgpu.BindGroupEntry(
+                    binding=binding,
+                    resource=self.uniform_buffer.resource_descriptor(),
+                ),
+            ],
+        )
 
 class ComputePass(Pass):
     ...
