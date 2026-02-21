@@ -38,3 +38,16 @@
     what to do with all the time steps.  Maybe track a sequence through
     time?  Maybe just use whatever time step is current when the note
     is triggered.
+
+
+## Internal changes
+
+* &#x2705; factor out parameter handling
+* Bubbler and BubblerHDR need to be merged.
+
+
+## Bloom changes
+
+* Redesign subgraph construction
+* Use float32
+* Does upsampler `filter_radius` need to be a vec2f?

@@ -1,3 +1,74 @@
+## Bloom, 2nd Try
+
+To work with float32 textures, it needs to have two sets of buffers:
+one set gets downsampled into, and the other gets upsample-added.
+I *think* the Upsampler and UpsampleMixer would become identical,
+just different gains.
+
+The `BloomSubgraph` should build an actual subgraph, with one
+`Downsampler` and one `Upsampler` instance for each MIP level.
+
+Construct the subgraph in BloomSubgraph constructor.
+
+    class BloomSubgraph:
+
+        def __init__(self):
+            self.input = None
+            self.output = None
+            self._parameters = ...
+            self.downsample_textures = [...]
+            self.upsample_textures = [...]
+            self.downsamplers = [...]
+            self.upsamplers = [...]
+
+        def bindings(self):
+            ... # input, output, downsample and upsample textures
+
+        def instantiate(self, device):
+            self.graph = RenderGraph(downsampler + upsamplers, ...)
+
+--------
+
+## Architecture Changes
+
+## Resizing
+Viewport resizing is very ad-hoc.  I should figure out which textures
+need to be resized and which passes need to rebind them.
+
+I kind of want to put an annotation in `resources` that says which
+resources are affected if the color attachment changes size.  Then
+RenderGraph can walk the graph, resize and rebind as needed.
+
+There are weird cases,though. For example, `Bloomer` might want to
+change the MIP depth when resized.
+
+## Resources, Bindings, Attachments
+Should distinguish between bindings and attachments.
+the `bindings` method should be renamed `resources` and return
+a list containing both bindings and attachments.
+
+The `resources` (*nee* `bindings`) method of passes has enough
+information to create the bind groups.  The passes could become
+more declarative.
+
+It would be awesome if `resources` became totally declarative.
+
+    class MyPass(RenderPass):
+        class Resources:
+            uvs: Buffer
+            decal: Texture
+            color: Attachment
+            depth: Attachment
+
+... or something.
+
+## `update_parameters`
+The `update_parameters` method could be moved into `Pass`.  It can
+get everything it needs from the `self.Parameters` subclass's
+annotations.
+
+--------
+
 ## Bloom
 
 https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom

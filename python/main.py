@@ -18,7 +18,9 @@ from video import VideoOutputFile
 
 def run(args):
     adapter = wgpu.gpu.request_adapter_sync()
-    device = adapter.request_device_sync(required_features=['float32-blendable', 'float32-filterable'])
+    device = adapter.request_device_sync(
+        required_features=['float32-blendable', 'float32-filterable'],
+    )
 
     canvas = RenderCanvas(
         size=Defaults.CANVAS_SIZE,

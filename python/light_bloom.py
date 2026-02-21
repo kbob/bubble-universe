@@ -4,6 +4,7 @@ import wgpu
 
 from constants import *
 from copier import CopyPass
+from parameterized import Parameterized
 from passes import Access, Binding, RenderPass, Subgraph
 from resources import Sampler, Texture, UniformBuffer
 from wgsl_types import *
@@ -26,12 +27,12 @@ class Rotor:
 
 rotor = Rotor(1 + 2 * BLOOM_MIP_LEVELS)
 
-class BloomSubgraph(Subgraph):
+class BloomSubgraph(Subgraph, Parameterized):
 
     """light bloom"""
 
     @dataclass
-    class _Parameters:
+    class Parameters:
         bloom_amount: float = Defaults.BLOOM_AMOUNT
         bloom_size: float = Defaults.BLOOM_SIZE
 
@@ -39,7 +40,6 @@ class BloomSubgraph(Subgraph):
         super().__init__(name)
         self.input = None
         self.output = None
-        self._parameters = self._Parameters()
         self.mip_textures = None
         shader_file = 'bloom.wgsl'
         shader_source = self.read_shader(shader_file)
@@ -49,10 +49,6 @@ class BloomSubgraph(Subgraph):
         self.upsample_mixer = UpsampleMixer(self.shader)
         # DEBUG
         self.copier = CopyPass()
-
-    def update_parameters(self, bloom_amount, bloom_size):
-        self._parameters.bloom_amount = bloom_amount
-        self._parameters.bloom_size = bloom_size
 
     def bindings(self):
         assert self.input is not None
@@ -226,10 +222,10 @@ class _Uniforms(Uniforms):
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Downsampler
 
-class Downsampler(RenderPass):
+class Downsampler(RenderPass, Parameterized):
 
     @dataclass
-    class _Parameters:
+    class Parameters:
         viewport_size: tuple[float, float] = Defaults.CANVAS_SIZE
 
     # class _Uniforms(Uniforms):
@@ -237,7 +233,6 @@ class Downsampler(RenderPass):
 
     def __init__(self, shader):
         super().__init__('bloom downsampler')
-        self._parameters = self._Parameters()
         self.input = None
         self.input_sampler = Sampler(
             name='downsampler input sampler',
@@ -247,10 +242,6 @@ class Downsampler(RenderPass):
         self.uniform_buffer = UniformBuffer('downsampler uniforms', _Uniforms)
         self.output = None
         self.shader = shader
-
-    def update_parameters(self, viewport_size):
-        self._parameters.viewport_size = viewport_size
-        return self
 
     def bindings(self):
         assert self.input is not None
@@ -395,15 +386,14 @@ class Downsampler(RenderPass):
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Upsampler
 
-class Upsampler(RenderPass):
+class Upsampler(RenderPass, Parameterized):
 
     @dataclass
-    class _Parameters:
+    class Parameters:
         bloom_size: float = Defaults.BLOOM_SIZE
 
     def __init__(self, shader):
         super().__init__('bloom upsampler')
-        self._parameters = self._Parameters()
         self.input = None
         self.input_sampler = Sampler(
             name='upsampler input sampler',
@@ -413,10 +403,6 @@ class Upsampler(RenderPass):
         self.uniform_buffer = UniformBuffer('uniforms', _Uniforms)
         self.output = None
         self.shader = shader
-
-    def update_parameters(self, bloom_size):
-        self._parameters.bloom_size = bloom_size
-        return self
 
     def bindings(self):
         assert self.input is not None
@@ -566,16 +552,15 @@ class Upsampler(RenderPass):
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Upsample Mixer
 
-class UpsampleMixer(RenderPass):
+class UpsampleMixer(RenderPass, Parameterized):
 
     @dataclass
-    class _Parameters:
+    class Parameters:
         bloom_size: float = Defaults.BLOOM_SIZE
         bloom_amount: float = Defaults.BLOOM_AMOUNT
 
     def __init__(self, shader):
         super().__init__('bloom upsample mixer')
-        self._parameters = self._Parameters()
         self.image_input = None
         self.image_sampler = Sampler('mix input sampler')
         self.bloom_input = None
@@ -587,11 +572,6 @@ class UpsampleMixer(RenderPass):
         self.uniform_buffer = UniformBuffer('uniforms', _Uniforms)
         self.output = None
         self.shader = shader
-
-    def update_parameters(self, bloom_size, bloom_amount):
-        self._parameters.bloom_size = bloom_size
-        self._parameters.bloom_amount = bloom_amount
-        return self
 
     def bindings(self):
         assert self.image_input is not None

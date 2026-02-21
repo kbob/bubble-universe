@@ -1,15 +1,19 @@
+from dataclasses import dataclass
+
 import wgpu
 
 from constants import *
 from passes import Access, Binding, RenderPass
+from parameterized import Parameterized
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
 
-class DrawingPass(RenderPass):
+class DrawingPass(RenderPass, Parameterized):
 
 
-    class _Parameters:
+    @dataclass
+    class Parameters:
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
         particle_size: float = Defaults.PARTICLE_SIZE
@@ -25,18 +29,11 @@ class DrawingPass(RenderPass):
 
     def __init__(self, name='drawing'):
         super().__init__(name)
-        self._parameters = self._Parameters()
         self.uvs = None
         self.output = None
         self.uniform_buffer = UniformBuffer('drawing uniforms', self._Uniforms)
         self.shader_file = 'draw.wgsl'
         self.shader = self.read_shader(self.shader_file)
-
-    def update_parameters(self, seq_count, seq_length, particle_size):
-        self._parameters.seq_count = seq_count
-        self._parameters.seq_length = seq_length
-        self._parameters.particle_size = particle_size
-        return self
 
     def bindings(self):
         assert self.uvs is not None

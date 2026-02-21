@@ -21,6 +21,7 @@ class Pass(ABC):
     """Base class for compute and render passes"""
 
     def __init__(self, name):
+        super().__init__()
         self.name = name
 
     @abstractmethod
@@ -102,7 +103,6 @@ class Subgraph(Pass):
     # optional:
     # _Parameters
     # __init__(self, ...)
-    # update_parameters(self, ...)
     # resize(self, device, size)
 
     def instantiate_subgraph(self, device, passes, external_resources):

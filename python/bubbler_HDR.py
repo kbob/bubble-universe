@@ -5,6 +5,7 @@ from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
 from light_bloom import BloomSubgraph
+from parameterized import Parameterized
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
@@ -12,7 +13,7 @@ from tone_mapper import ToneMapPass
 from wgsl_types import *
 
 
-class BubblerHDR:
+class BubblerHDR(Parameterized):
 
     @dataclass
     class Parameters:
@@ -28,27 +29,9 @@ class BubblerHDR:
 
 
     def __init__(self):
-        self._parameters = self.Parameters()
+        super().__init__()
         self._time = 0
         self._last_size = None
-
-
-    def update_parameters(
-        self,
-        seq_count=None,
-        seq_length=None,
-        fps=None,
-        speed=None,
-        r=None,
-        particle_size=None,
-    ):
-        loco = locals()
-        def update(name):
-            if loco[name] is not None:
-                setattr(self._parameters, name, loco[name])
-        for param in get_annotations(self.Parameters):
-            update(param)
-        return self
 
 
     def build_render_graph(self, device, outputs):
@@ -106,16 +89,11 @@ class BubblerHDR:
                 .bind_input(self.HDR_image)
                 .bind_color_output(self.bloomed_image)
         )
-        # self.bloomer = (
+        # self.copier = (
         #     CopyPass()
         #         .bind_input(self.HDR_image)
         #         .bind_color_output(self.bloomed_image)
         # )
-        self.copier = (
-            CopyPass()
-                .bind_input(self.HDR_image)
-                .bind_color_output(self.bloomed_image)
-        )
 
         self.mapper = (
             ToneMapPass()
@@ -126,7 +104,7 @@ class BubblerHDR:
             self.particles,
             self.drawer,
             self.bloomer,
-            self.copier,
+            # self.copier,
             self.mapper,
         ]
 
@@ -169,8 +147,8 @@ class BubblerHDR:
             self.bloomer.bind_input(self.HDR_image)
             self.bloomed_image.resize(self.device, size)
             self.bloomer.bind_color_output(self.bloomed_image)
-            self.copier.bind_input(self.HDR_image)
-            self.copier.bind_output(self.bloomed_image)
+            # self.copier.bind_input(self.HDR_image)
+            # self.copier.bind_output(self.bloomed_image)
             self.mapper.bind_input(self.bloomed_image)
 
             self.bloomer.resize(self.device, size)

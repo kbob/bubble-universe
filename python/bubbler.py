@@ -4,13 +4,14 @@ from inspect import get_annotations
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
+from parameterized import Parameterized
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
 from wgsl_types import *
 
 
-class Bubbler:
+class Bubbler(Parameterized):
 
     @dataclass
     class Parameters:
@@ -26,27 +27,9 @@ class Bubbler:
 
 
     def __init__(self):
-        self._parameters = self.Parameters()
+        super().__init__()
         self._time = 0
         self._last_size = None
-
-
-    def update_parameters(
-        self,
-        seq_count=None,
-        seq_length=None,
-        fps=None,
-        speed=None,
-        r=None,
-        particle_size=None,
-    ):
-        loco = locals()
-        def update(name):
-            if loco[name] is not None:
-                setattr(self._parameters, name, loco[name])
-        for param in get_annotations(self.Parameters):
-            update(param)
-        return self
 
 
     def build_render_graph(self, device, outputs):
