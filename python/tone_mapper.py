@@ -83,7 +83,6 @@ class ToneMapPass(RenderPass):
         rpass.end()
 
     def instantiate_input_bind_group(self, device):
-        assert self.pipeline
         self.input_bind_group = device.create_bind_group(
             label=self.make_label('input bind group'),
             layout=self.pipeline.get_bind_group_layout(0),

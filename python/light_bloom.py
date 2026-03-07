@@ -302,7 +302,7 @@ class Downsampler(RenderPass):
                 wgpu.BindGroupEntry(
                     binding=1,
                     resource=self.input_sampler.resource_descriptor(),
-                )
+                ),
             ],
         )
 
@@ -432,7 +432,7 @@ class Upsampler(RenderPass, Parameterized):
                 wgpu.BindGroupEntry(
                     binding=1,
                     resource=self.input_sampler.resource_descriptor(),
-                )
+                ),
             ],
         )
 
