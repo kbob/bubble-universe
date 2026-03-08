@@ -16,6 +16,7 @@ class CallRecord(NamedTuple):
     name: str
     args: str
     kwargs: str
+    prefix: str = ''
 
 indent = '  '
 
@@ -78,12 +79,16 @@ def call_lines(call):
 def print_object(obj, indent=''):
     print(indent + '\n'.join(object_lines(obj)))
 
-stri = 'This is a longer string than I want to see.'
+stri = (
+    'This is a longer string than I want to see.'
+    'Much, much longer.  Maybe even longer than I want to type.'
+    )
+
 stru = {'one': 1, 'two': 2}
 lis = [stru, stri]
 sls = {'list': lis}
 call = CallRecord('function', (123, stri), {'stru': stru})
-# print_object(str)
+# print_object(stri)
 # print_object(stru)
 # print_object([1, 2])
 # print_object(lis)
@@ -91,18 +96,39 @@ call = CallRecord('function', (123, stri), {'stru': stru})
 # print_object(call)
 # exit()
 
+
+call_stack = []
+
+def record_call(name, args, kwargs, prefix=None):
+    rec = CallRecord(name, args, kwargs, prefix)
+    for log in call_stack:
+        log.append(rec)
+
+def print_calls(calls):
+    for (i, call) in enumerate(calls):
+        print(f'{call.prefix}: ', end='')
+        print_object(call)
+
+
 class CallLogger:
 
-    def __init__(self):
+    def __init__(self, prefix=''):
+        # print(f'CL.init({self=}, {prefix=})')
         self.calls = []
+        self.prefix=prefix
 
     def __getattr__(self, name):
         def log(*args, **kwargs):
-            self.calls.append(CallRecord(name, args, kwargs))
+            prefix = self.prefix
+            if prefix: prefix += '.'
+            prefix=f'{prefix}{len(self.calls)}'
+            rec = CallRecord(name, args, kwargs)
+            self.calls.append(rec)
+            record_call(name, args, kwargs, prefix)
             note = ''
             if 'label' in kwargs:
                 note = f' ({kwargs['label']!r})'
-            return f'{name} result{note}'
+            return CallableString(f'{name} result{note}', prefix=prefix)
         return log
 
     def print_calls(self, multiline=False):
@@ -122,7 +148,26 @@ class CallLogger:
                 allstr = ', '.join(a for a in chain(astr, kwstr))
                 print(f'{i}: {call[0]}({allstr})')
 
+class CallableString(str, CallLogger):
 
+    def __new__(cls, value, prefix=''):
+        # print(f'CS.new({value=}, {prefix=})')
+        return super().__new__(cls, value)
+
+    def __init__(self, value, prefix=''):
+        # print(f'CS.init({value=}, {prefix=})')
+        super(str, self).__init__(prefix=prefix)
+
+foo = CallableString('foo', prefix='pre>')
+# print(f'{foo = }')
+# print(f'{type(foo) = }')
+# print(f'{foo.prefix = }')
+# exit()
+
+del foo
+
+
+call_stack.append([])
 a = CallLogger()
 a.method('arg1', 'arg2', kwarg='value')
 a.other(1, 2, shoe='buckled')
@@ -137,7 +182,11 @@ a.array(
 )
 # a.print_calls()
 # a.print_calls(multiline=True)
+# print_calls(call_stack.pop())
 # exit()
+
+call_stack.clear()
+del a
 
 
 class TestPass(passes.ComputePass):
@@ -146,7 +195,7 @@ class TestPass(passes.ComputePass):
         super().__init__(name)
         self.output = None
 
-    def bindings(self):
+    def resources(self):
         return [
             passes.Binding('output', self.output, passes.Access.RW)
         ]
@@ -170,11 +219,14 @@ sampler = resources.Sampler('my sampler')
 tp = TestPass('my test pass')
 tp.bind_output(buffer)
 
+call_stack.append([])
 device = CallLogger()
 rg = rendergraph.RenderGraph(device, [tp])
 # device.print_calls(multiline=True)
-# exit()
+# print_calls(call_stack.pop())
+# 
 
+call_stack.clear()
 del buffer, texture, sampler, tp, rg
 
 # Minimal real render graph
@@ -191,6 +243,8 @@ class FakeCanvas(CallLogger):
     def get_preferred_format(self):
         return 'bgra8unorm'
 
+
+call_stack.append([])
 fake_canvas = FakeCanvas()
 canvas = resources.CanvasTexture('my canvas', fake_canvas, 'bgra8unorm')
 # fake_canvas.print_calls(multiline=True)
@@ -203,12 +257,13 @@ cp.bind_uvs(uv_buffer)
 
 rp = drawer.DrawingPass()
 rp.bind_uvs(uv_buffer)
-rp.bind_color_output(canvas)
+rp.attach_color_output(canvas)
 
 fake_device = CallLogger()
 rg = rendergraph.RenderGraph(fake_device, [rp])
 
 
 print('Graph Initialization Calls')
-fake_device.print_calls(multiline=True)
+# fake_device.print_calls(multiline=True)
+print_calls(call_stack.pop())
 print_object(rp.pass_descriptor)

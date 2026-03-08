@@ -82,17 +82,17 @@ class BubblerHDR(Parameterized):
         self.drawer = (
             DrawingPass()
                 .bind_uvs(self.uvs)
-                .bind_color_output(self.HDR_image)
+                .attach_color_output(self.HDR_image)
         )
         self.bloomer = (
             BloomSubgraph()
                 .bind_input(self.HDR_image)
-                .bind_color_output(self.bloomed_image)
+                .attach_output(self.bloomed_image)
         )
         self.mapper = (
             ToneMapPass()
                 .bind_input(self.bloomed_image)
-                .bind_color_output(tone_mapping_dest)
+                .attach_output(tone_mapping_dest)
         )
         passes = [
             self.particles,
@@ -105,7 +105,7 @@ class BubblerHDR(Parameterized):
             self.copiers = [
                 CopyPass()
                     .bind_input(self.image_texture)
-                    .bind_color_output(out)
+                    .attach_output(out)
                 for out in outputs]
             passes.extend(self.copiers)
 

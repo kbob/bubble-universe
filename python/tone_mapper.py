@@ -1,6 +1,6 @@
 import wgpu
 
-from passes import Access, Binding, RenderPass
+from passes import Access, Attachment, Binding, RenderPass
 from resources import Sampler
 
 class ToneMapPass(RenderPass):
@@ -14,21 +14,21 @@ class ToneMapPass(RenderPass):
         self.shader_file = 'tone_map.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
-    def bindings(self):
+    def resources(self):
         assert self.input is not None
         assert self.input_sampler is not None
         assert self.output is not None
         return [
             Binding('input texture', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
-            Binding('output', self.output, Access.RO),
+            Attachment('output', self.output),
         ]
 
     def bind_input(self, tex):
         self.input = tex
         return self
 
-    def bind_color_output(self, tex):
+    def attach_output(self, tex):
         self.output = tex
         return self
 
@@ -44,23 +44,13 @@ class ToneMapPass(RenderPass):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(device, shader_module)
+        self.pipeline = self.instantiate_pipeline(device, shader_module)
 
         # # bind group(s)
         self.instantiate_input_bind_group(device)
 
         # render pass descriptor
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='clear',
-                    store_op='store',
-                    view=self.output.current_view(),
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
         self.instantiate_input_bind_group(device)

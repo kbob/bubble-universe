@@ -6,13 +6,13 @@ fractal curves](images/example.png)
 Here are two implementations of the Bubble Universe graphics hack.
 
 The first is in Javascript with WebGPU.  It runs in a browser window.
-The second is in Python using wgpu-py.  It runs as a desktop app.  At
-this moment (initial commit), they are functionally identical.
+The second is in Python using wgpu-py.  It runs as a desktop app.
 
 The plan for the Javascript version is for it to become an interactive
 web page with GUI controls to vary a few parameters of the graphics.
 I'll get to learn a little about web front end development, CSS,
-DOM, page animation, etc.
+DOM, page animation, etc.  At this time, the Javascript version has no
+parameters; it just runs non-interactively.
 
 Meanwhile, I want the Python version to become a scriptable toolkit
 for deeper customization.  It is gradually getting features, it can

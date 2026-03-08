@@ -69,7 +69,7 @@ class Bubbler(Parameterized):
         self.drawer = (
             DrawingPass()
                 .bind_uvs(self.uvs)
-                .bind_color_output(drawing_dest)
+                .attach_color_output(drawing_dest)
         )
         passes = [
             self.particles,
@@ -80,7 +80,7 @@ class Bubbler(Parameterized):
             self.copiers = [
                 CopyPass()
                     .bind_input(self.image_texture)
-                    .bind_color_output(out)
+                    .attach_output(out)
                 for out in outputs]
             passes.extend(self.copiers)
 

@@ -31,11 +31,11 @@ class ParticleMotionPass(ComputePass, Parameterized):
         self.shader_file='particles.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
-    def bindings(self):
+    def resources(self):
         assert self.uvs
         assert self.uniform_buffer
         return [
-            Binding('uv', self.uvs, Access.RW),
+            Binding('uv', self.uvs, Access.WO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
         ]
 
@@ -71,10 +71,7 @@ class ParticleMotionPass(ComputePass, Parameterized):
             ],
         )
         self.instantiate_uniforms_bind_group(device, 1)
-
-        self.pass_descriptor = wgpu.ComputePassDescriptor(
-            label=self.make_label('compute pass'),
-        )
+        self.instantiate_pass_descriptor()
 
     def execute(self, device, encoder):
 

@@ -29,3 +29,4 @@ class VideoOutputFile:
         for packet in self.stream.encode():
             self.container.mux(packet)
         self.container.close()
+        print(f'Video saved to {self.filename}')

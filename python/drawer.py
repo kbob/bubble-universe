@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import wgpu
 
 from constants import *
-from passes import Access, Binding, RenderPass
+from passes import Access, Attachment, Binding, BlendMode, RenderPass
 from parameterized import Parameterized
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
@@ -34,20 +34,24 @@ class DrawingPass(RenderPass, Parameterized):
         self.shader_file = 'draw.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
-    def bindings(self):
+    def resources(self):
         assert self.uvs is not None
         assert self.uniform_buffer is not None
         return [
             Binding('uv', self.uvs, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
-            Binding('color output', self.output, Access.RW),
+            Attachment(
+                'color output',
+                self.output,
+                blend=BlendMode(BLEND_MODE),
+            ),
         ]
 
     def bind_uvs(self, buffer):
         self.uvs = buffer
         return self
 
-    def bind_color_output(self, texture):
+    def attach_color_output(self, texture):
         self.output = texture
         return self
 
@@ -62,11 +66,7 @@ class DrawingPass(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(
-            device,
-            shader_module,
-            blend=self._choose_blend_mode(),
-        )
+        self.pipeline = self.instantiate_pipeline(device, shader_module)
 
         # bind groups
         self.uv_bind_group = device.create_bind_group(
@@ -83,21 +83,11 @@ class DrawingPass(RenderPass, Parameterized):
         # # Need to move ownership of self.pipeline
         # # to RenderPass, then I can factor out create_bind_group()
         # #
-        # # And then the whole 'instantiate' can be driven by self.bindings()
+        # # And then the whole 'instantiate' can be driven by self.resources()
         #
         # # self.uv_bind_group = self.create_bind_group(0, 'uv', self.uvs)
 
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='clear',
-                    store_op='store',
-                    view=...,   # set in execute()
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def execute(self, device, encoder):
 
@@ -132,33 +122,3 @@ class DrawingPass(RenderPass, Parameterized):
         rpass.set_bind_group(1, self.uniforms_bind_group)
         rpass.draw(vertex_count)
         rpass.end()
-
-    def _choose_blend_mode(self):
-        if BLEND_MODE == 'add':
-            return wgpu.BlendState(
-                color=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one',
-                ),
-                alpha=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one',
-                ),
-            )
-        elif BLEND_MODE == 'blend':
-            return wgpu.BlendState(
-                color=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one-minus-src-alpha',
-                ),
-                alpha=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one-minus-src-alpha',
-                ),
-            )
-        else:
-            assert False, f'unknown BLEND_MODE of {BLEND_MODE!r}'

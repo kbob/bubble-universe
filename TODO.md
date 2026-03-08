@@ -21,6 +21,7 @@
     + vaporwave
     + midnight
     + fiesta
+    + Easter
 * MSAA?
 * 3D
   - perspective camera

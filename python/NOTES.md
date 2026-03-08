@@ -1,3 +1,10 @@
+# Notes on Work in Progress
+
+Nothing here is definite.  These are my thoughts as I figure out
+what I'm doing.
+
+Most recent notes are on top.
+
 ## Bloom, 2nd Try
 
 *This is on hold.  float16 looks okay for now.*
@@ -34,6 +41,7 @@ Construct the subgraph in BloomSubgraph constructor.
 ## Architecture Changes
 
 ## Resizing
+
 Viewport resizing is very ad-hoc.  I should figure out which textures
 need to be resized and which passes need to rebind them.
 
@@ -56,6 +64,7 @@ or `attachment_changed`.  They rebuild the bind group/color attachment.
  
 
 ## Resources, Bindings, Attachments
+
 Should distinguish between bindings and attachments.
 the `bindings` method should be renamed `resources` and return
 a list containing both bindings and attachments.
@@ -75,7 +84,27 @@ It would be awesome if `resources` became totally declarative.
 
 ... or something.
 
+### Strategy
+
+  * rename `bindings()` to `resources()`
+
+  * Define Attachment class.  Move color attachments to it.
+
+  * Add info to attachments to create the `RenderPassColorAttachment`.
+     - blend mode, default = replace
+     - clear_value, default = (0, 0, 0, 1)
+
+  * Refactor color attachment initialization out of
+    `.instantiate()` methods
+
+  * add info to Binding and do likewise.
+
+
+
 ## `update_parameters`
+
+*This is done.*
+
 The `update_parameters` method could be moved into `Pass`.  It can
 get everything it needs from the `self.Parameters` subclass's
 annotations.

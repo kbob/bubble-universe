@@ -1,6 +1,6 @@
 import wgpu
 
-from passes import Access, Binding, RenderPass
+from passes import Access, Attachment, Binding, RenderPass
 from resources import Sampler
 
 shader_source = '''
@@ -46,21 +46,21 @@ class CopyPass(RenderPass):
         self.input_sampler = Sampler(f'{name} input sampler')
         self.output = None
 
-    def bindings(self):
+    def resources(self):
         assert self.input is not None
         assert self.input_sampler is not None
         assert self.output is not None
         return [
             Binding('input texture', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
-            Binding('output', self.output, Access.RW),
+            Attachment('output', self.output),
         ]
 
     def bind_input(self, tex):
         self.input = tex
         return self
 
-    def bind_color_output(self, tex):
+    def attach_output(self, tex):
         self.output = tex
         return self
 
@@ -76,23 +76,13 @@ class CopyPass(RenderPass):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(device, shader_module)
+        self.pipeline = self.instantiate_pipeline(device, shader_module)
 
         # bind groups
         self.instantiate_input_bind_group(device)
 
         # render pass descriptor
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='clear',
-                    store_op='store',
-                    view=...,   # set in execute()
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
         self.instantiate_input_bind_group(device)

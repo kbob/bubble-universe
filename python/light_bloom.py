@@ -5,7 +5,7 @@ import wgpu
 from constants import *
 from copier import CopyPass
 from parameterized import Parameterized
-from passes import Access, Binding, RenderPass, Subgraph
+from passes import Access, Attachment, Binding, BlendMode, RenderPass, Subgraph
 from resources import Sampler, Texture, UniformBuffer
 from wgsl_types import *
 
@@ -50,19 +50,19 @@ class BloomSubgraph(Subgraph, Parameterized):
         # DEBUG
         self.copier = CopyPass()
 
-    def bindings(self):
+    def resources(self):
         assert self.input is not None
         assert self.output is not None
         return [
             Binding('input', self.input, Access.RO),
-            Binding('color output', self.output, Access.RW),
+            Attachment('output', self.output, Access.WO),
         ]
 
     def bind_input(self, texture):
         self.input = texture
         return self
 
-    def bind_color_output(self, texture):
+    def attach_output(self, texture):
         self.output = texture
         return self
 
@@ -99,7 +99,7 @@ class BloomSubgraph(Subgraph, Parameterized):
             self.mip_textures,                  # write to next
         ):
             dn.bind_input(in_)
-            dn.bind_color_output(out)
+            dn.attach_output(out)
 
         for (up, in_, out) in zip(
             self.upsamplers,                    # pass
@@ -107,17 +107,17 @@ class BloomSubgraph(Subgraph, Parameterized):
             self.mip_textures[-2::-1],          # write to previous
         ):
             up.bind_input(in_)
-            up.bind_color_output(out)
+            up.attach_output(out)
 
         (self.upsample_mixer
             .bind_image_input(self.input)
             .bind_bloom_input(self.mip_textures[0])
-            .bind_color_output(self.output)
+            .attach_output(self.output)
         )
 
         (self.copier                            # DEBUG
             .bind_input(self.mip_textures[-1])
-            .bind_color_output(self.output)
+            .attach_output(self.output)
         )
         self.instantiate_subgraph(
             device=device,
@@ -155,7 +155,7 @@ class BloomSubgraph(Subgraph, Parameterized):
         def short_return(texture):
             (self.copier
                 .bind_input(texture)
-                .bind_color_output(self.output)
+                .attach_output(self.output)
                 .resize(device, None)
             )
             self.copier.execute(device, encoder)
@@ -207,7 +207,7 @@ class Downsampler(RenderPass):
         self.output = None
         self.shader = shader
 
-    def bindings(self):
+    def resources(self):
         assert self.input is not None
         assert self.input_sampler is not None
         assert self.uniform_buffer is not None
@@ -216,14 +216,14 @@ class Downsampler(RenderPass):
             Binding('input', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
-            Binding('color output', self.output, Access.RW),
+            Attachment('output', self.output),
         ]
 
     def bind_input(self, texture):
         self.input = texture
         return self
 
-    def bind_color_output(self, texture):
+    def attach_output(self, texture):
         self.output = texture
         return self
 
@@ -240,7 +240,7 @@ class Downsampler(RenderPass):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(
+        self.pipeline = self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='downsampler_fragment_shader',
@@ -251,17 +251,7 @@ class Downsampler(RenderPass):
         self.instantiate_uniforms_bind_group(device, 1)
 
         # render pass descriptor
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='clear',
-                    store_op='store',
-                    view=...,   # set in execute()
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
         self.instantiate_input_bind_group(device)
@@ -330,7 +320,7 @@ class Upsampler(RenderPass, Parameterized):
         self.output = None
         self.shader = shader
 
-    def bindings(self):
+    def resources(self):
         assert self.input is not None
         assert self.input_sampler is not None
         assert self.uniform_buffer is not None
@@ -339,14 +329,14 @@ class Upsampler(RenderPass, Parameterized):
             Binding('input', self.input, Access.RO),
             Binding('input sampler', self.input_sampler, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
-            Binding('color output', self.output, Access.RW),
+            Attachment('output', self.output, blend=BlendMode.ADD),
         ]
 
     def bind_input(self, texture):
         self.input = texture
         return self
 
-    def bind_color_output(self, texture):
+    def attach_output(self, texture):
         self.output = texture
         return self
 
@@ -359,22 +349,10 @@ class Upsampler(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(
+        self.pipeline = self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='upsampler_fragment_shader',
-            blend=wgpu.BlendState(
-                color=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one',
-                ),
-                alpha=wgpu.BlendComponent(
-                    operation='add',
-                    src_factor='one',
-                    dst_factor='one',
-                ),
-            ),
         )
 
         # create bind groups
@@ -382,17 +360,7 @@ class Upsampler(RenderPass, Parameterized):
         self.instantiate_uniforms_bind_group(device, 1)
 
         # create render pass descriptor
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='load',
-                    store_op='store',
-                    view=...,   # set in execute()
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
         self.instantiate_input_bind_group(device)
@@ -464,7 +432,7 @@ class UpsampleMixer(RenderPass, Parameterized):
         self.output = None
         self.shader = shader
 
-    def bindings(self):
+    def resources(self):
         assert self.image_input is not None
         assert self.image_sampler is not None
         assert self.bloom_input is not None
@@ -477,7 +445,7 @@ class UpsampleMixer(RenderPass, Parameterized):
             Binding('bloom input', self.bloom_input, Access.RO),
             Binding('bloom sampler', self.bloom_sampler, Access.RO),
             Binding('uniforms', self.uniform_buffer, Access.RW),
-            Binding('color output', self.output, Access.RW),
+            Attachment('output', self.output),
         ]
 
     def bind_image_input(self, texture):
@@ -488,7 +456,7 @@ class UpsampleMixer(RenderPass, Parameterized):
         self.bloom_input = texture
         return self
 
-    def bind_color_output(self, texture):
+    def attach_output(self, texture):
         self.output = texture
         return self
 
@@ -507,7 +475,7 @@ class UpsampleMixer(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.create_pipeline(
+        self.pipeline = self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='upsample_mixer_fragment_shader',
@@ -519,17 +487,7 @@ class UpsampleMixer(RenderPass, Parameterized):
         self.instantiate_uniforms_bind_group(device, 1)
 
         # render pass descriptor
-        self.pass_descriptor = wgpu.RenderPassDescriptor(
-            label=self.make_label('render pass'),
-            color_attachments=[
-                wgpu.RenderPassColorAttachment(
-                    clear_value=(0, 0, 0, 1),
-                    load_op='clear',
-                    store_op='store',
-                    view=...,   # set in execute()
-                ),
-            ],
-        )
+        self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
         self.instantiate_image_input_bind_group(device)

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from inspect import get_annotations
 import os.path
 from typing import NamedTuple
 
@@ -10,12 +11,61 @@ import wgpu
 class Access(Enum):
     RO = 'ro'
     RW = 'rw'
+    WO = 'wo'
+
+
+class BlendMode(Enum):
+    ADD = 'add'
+    BLEND = 'blend'
+    COPY = 'copy'
+
+    @property
+    def blend(self):
+        if self == self.ADD:
+            return wgpu.BlendState(
+                color=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one',
+                ),
+                alpha=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one',
+                ),
+            )
+        if self == self.BLEND:
+            return wgpu.BlendState(
+                color=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one-minus-src-alpha',
+                ),
+                alpha=wgpu.BlendComponent(
+                    operation='add',
+                    src_factor='one',
+                    dst_factor='one-minus-src-alpha',
+                ),
+            )
+        if self == self.COPY:
+            return None # use wgpu default
+        raise NotImplementedError(f'no blend mode defined for {self}')
+
+
+class Attachment(NamedTuple):
+    """A render pass's attachment (drawing texture)"""
+    name: str
+    resource: resources.Texture
+    clear_value: tuple[int, int, int, int] = (0, 0, 0, 1)
+    blend: BlendMode = BlendMode.COPY
+
 
 class Binding(NamedTuple):
     """A resource used by a pass"""
     name: str
     resource: resources.Resource
     access: Access
+
 
 class Pass(ABC):
     """Base class for compute and render passes"""
@@ -33,7 +83,7 @@ class Pass(ABC):
             )
 
     @abstractmethod
-    def bindings(self):
+    def resources(self):
         ...
 
     @abstractmethod
@@ -78,22 +128,23 @@ class Pass(ABC):
             ],
         )
 
+
 class ComputePass(Pass):
-    ...
+    
+    def instantiate_pass_descriptor(self):
+        self.pass_descriptor = wgpu.ComputePassDescriptor(
+            label=self.make_label('compute pass'),
+        )
+
 
 class RenderPass(Pass):
 
-    # @abstractmethod
-    # def bind_color_output(self, tex):
-    #     ...
-
-    def create_pipeline(
+    def instantiate_pipeline(
         self,
         device,
         shader_module,
         vertex_entry=None,
         fragment_entry=None,
-        blend=None,
     ):
         return device.create_render_pipeline(
             label=self.make_label('pipeline'),
@@ -105,41 +156,66 @@ class RenderPass(Pass):
             fragment=wgpu.FragmentState(
                 module=shader_module,
                 entry_point=fragment_entry,
-                targets=[
-                    wgpu.ColorTargetState(
-                        blend=blend,
-                        format=self.output.format,
-                    ),
-                ],
+                # No depth/stencil targets yet
+                targets=self._color_targets()
             ),
         )
+
+    def _color_targets(self):
+        return [
+            wgpu.ColorTargetState(
+                blend=r.blend.blend,
+                format=r.resource.format,
+            )
+            for r in self.resources()
+            if isinstance(r, Attachment)
+        ]
+
+    def instantiate_pass_descriptor(self):
+        self.pass_descriptor = wgpu.RenderPassDescriptor(
+            label=self.make_label('render pass'),
+            color_attachments=self._color_attachments(),
+        )
+
+    def _color_attachments(self):
+        return [
+            # Nobody is overriding these defaults yet.
+            wgpu.RenderPassColorAttachment(
+                clear_value=(0, 0, 0, 1),
+                load_op='clear',
+                store_op='store',
+                view=...,
+            )
+            for r in self.resources()
+            if isinstance(r, Attachment)
+        ]
+
 
 class Subgraph(Pass):
 
     """
-        A RenderGraph node
-        that does not encapsulate a wgpu pipeline-render pass.
+        A RenderGraph node that is another RenderGraph.
     """
 
-    # required:
-    # bindings(self)
-    # instantiate(self, device)
-    # execute(self, device, encoder)
+    # required members:
+    #   resources(self)
+    #   instantiate(self, device)
+    #   execute(self, device, encoder)
 
-    # optional:
+    # optional members:
     # _Parameters
-    # __init__(self, ...)
-    # resize(self, device, size)
+    #   __init__(self, ...)
+    #   resize(self, device, size)
 
     def instantiate_subgraph(self, device, passes, external_resources):
 
         # Find and instantiate all bound resources
         resources = {r: None for r in external_resources}
         for pass_ in passes:
-            for b in pass_.bindings():
-                resource = b.resource
+            for r in pass_.resources():
+                resource = r.resource
                 assert resource, (f'pass {pass_.name!r} '
-                                  f'is missing resource {b.name!r}')
+                                  f'is missing resource {r.name!r}')
                 if resource not in resources:
                     resources[resource] = resource.instantiate(device)
 

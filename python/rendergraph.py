@@ -11,10 +11,10 @@ class RenderGraph:
         # Find and instantiate all bound resources
         resources = {r: None for r in external_resources}
         for pass_ in passes:
-            for b in pass_.bindings():
-                resource = b.resource
+            for r in pass_.resources():
+                resource = r.resource
                 assert resource, (f'pass {pass_.name!r} '
-                                  f'is missing resource {b.name!r}')
+                                  f'is missing resource {r.name!r}')
                 if resource not in resources:
                     resources[resource] = resource.instantiate(device)
 
