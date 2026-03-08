@@ -1,13 +1,23 @@
+from dataclasses import dataclass
+
 import wgpu
 
 from constants import *
 from math import ceil
+from parameterized import Parameterized
 from passes import Access, Binding, ComputePass
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
 
-class ParticleMotionPass(ComputePass):
+class ParticleMotionPass(ComputePass, Parameterized):
+
+    @dataclass
+    class Parameters:
+        seq_count: int = Defaults.SEQ_COUNT
+        seq_length: int = Defaults.SEQ_LENGTH
+        t: float = 0
+        r: float = Defaults.R
 
     class _Uniforms(Uniforms):
         seq_count: u32 = Defaults.SEQ_COUNT
@@ -17,17 +27,9 @@ class ParticleMotionPass(ComputePass):
 
     def __init__(self, name='particles'):
         super().__init__(name)
-        self._uniforms = self._Uniforms()
         self.uvs = None
         self.shader_file='particles.wgsl'
         self.shader = self.read_shader(self.shader_file)
-
-    def update_parameters(self, seq_count, seq_length, t, r):
-        self._uniforms.seq_count = seq_count
-        self._uniforms.seq_length = seq_length
-        self._uniforms.t = t
-        self._uniforms.r = r
-        return self
 
     def bindings(self):
         assert self.uvs
@@ -76,10 +78,15 @@ class ParticleMotionPass(ComputePass):
 
     def execute(self, device, encoder):
 
-        # TO DO: update uniforms
-        self.uniform_buffer.write_buffer(device, self._uniforms.as_data())
+        uniforms = self._Uniforms(
+            seq_count=self._parameters.seq_count,
+            seq_length=self._parameters.seq_length,
+            t=self._parameters.t,
+            r=self._parameters.r,
+        )
+        self.uniform_buffer.write_buffer(device, uniforms.as_data())
 
-        workgroup_count = ceil(self._uniforms.seq_count / WORKGROUP_SIZE)
+        workgroup_count = ceil(self._parameters.seq_count / WORKGROUP_SIZE)
         cpass = encoder.begin_compute_pass(**self.pass_descriptor)
         cpass.set_pipeline(self.pipeline)
         cpass.set_bind_group(0, self.uv_bind_group)

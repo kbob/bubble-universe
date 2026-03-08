@@ -3,12 +3,13 @@
 
     If a subclass has a class member `Parameters` declared as a `dataclass`,
     then it will be scanned for attributes and types.
-    The class will have a member varible `self._parameters` added,
+    The class will have a member variable `self._parameters` added,
     and a method `update_parameters(**kwargs)`.
 
 """
 
 from dataclasses import dataclass, fields, is_dataclass
+
 
 class Parameterized:
 

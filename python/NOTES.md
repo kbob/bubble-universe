@@ -1,5 +1,7 @@
 ## Bloom, 2nd Try
 
+*This is on hold.  float16 looks okay for now.*
+
 To work with float32 textures, it needs to have two sets of buffers:
 one set gets downsampled into, and the other gets upsample-added.
 I *think* the Upsampler and UpsampleMixer would become identical,
