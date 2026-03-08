@@ -19,8 +19,8 @@ class ToneMapPass(RenderPass):
         assert self.input_sampler is not None
         assert self.output is not None
         return [
-            Binding('input texture', self.input, Access.RO),
-            Binding('input sampler', self.input_sampler, Access.RO),
+            Binding((0, 0), 'input texture', self.input, Access.RO),
+            Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
             Attachment('output', self.output),
         ]
 
@@ -44,17 +44,18 @@ class ToneMapPass(RenderPass):
         )
 
         # pipeline
-        self.pipeline = self.instantiate_pipeline(device, shader_module)
+        self.instantiate_pipeline(device, shader_module)
 
         # # bind group(s)
-        self.instantiate_input_bind_group(device)
+        self.instantiate_bind_groups(device)
 
         # render pass descriptor
         self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
-        self.instantiate_input_bind_group(device)
-        self.pass_descriptor.color_attachments[0].view = self.output.current_view()
+        current_view = self.output.current_view()
+        self.rebind_group(device, 'input texture')
+        self.pass_descriptor.color_attachments[0].view = current_view
 
     def execute(self, device, encoder):
 
@@ -66,25 +67,4 @@ class ToneMapPass(RenderPass):
         self.pass_descriptor.color_attachments[0].view = current_view
 
         vertex_count = 3
-        rpass = encoder.begin_render_pass(**self.pass_descriptor)
-        rpass.set_pipeline(self.pipeline)
-        rpass.set_bind_group(0, self.input_bind_group)
-        rpass.draw(vertex_count)
-        rpass.end()
-
-    def instantiate_input_bind_group(self, device):
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                ),
-            ],
-        )
-        return self
+        self.encode_render_pass_draw(encoder, vertex_count)

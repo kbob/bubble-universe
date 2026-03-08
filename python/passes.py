@@ -52,19 +52,28 @@ class BlendMode(Enum):
         raise NotImplementedError(f'no blend mode defined for {self}')
 
 
+class Binding(NamedTuple):
+    """A wgpu binding used by a pass"""
+    group_binding: tuple[int, int] | None # None for non-wgpu passes
+    name: str
+    resource: resources.Resource
+    access: Access
+
+    @property
+    def group(self):
+        return self.group_binding[0]
+
+    @property
+    def binding(self):
+        return self.group_binding[1]
+
+
 class Attachment(NamedTuple):
     """A render pass's attachment (drawing texture)"""
     name: str
     resource: resources.Texture
     clear_value: tuple[int, int, int, int] = (0, 0, 0, 1)
     blend: BlendMode = BlendMode.COPY
-
-
-class Binding(NamedTuple):
-    """A resource used by a pass"""
-    name: str
-    resource: resources.Resource
-    access: Access
 
 
 class Pass(ABC):
@@ -98,6 +107,48 @@ class Pass(ABC):
     def execute(self, device, encoder):
         ...
 
+    def instantiate_bind_groups(self, device):
+        bindings = [r for r in self.resources() if isinstance(r, Binding)]
+        groups = [r.group for r in bindings]
+        group_count = max(groups) + 1
+
+        self.bind_groups = [
+            self._create_bind_group(
+                device,
+                [b for b in bindings if b.group == i],
+            )
+            for i in range(group_count)
+        ]
+        return self
+
+    def rebind_group(self, device, name):
+        bindings = [r for r in self.resources() if isinstance(r, Binding)]
+        binding = [b for b in bindings if b.name == name][0]
+        group = binding.group
+        self.bind_groups[group] = self._create_bind_group(
+            device,
+            [b for b in bindings if b.group == group],
+        )
+        return self
+
+    def _create_bind_group(self, device, bindings):
+        if bindings:
+            group = bindings[0].group
+            assert all(b.group == group for b in bindings)
+            return device.create_bind_group(
+                label=self.make_label(f'bind group'),
+                layout=self.pipeline.get_bind_group_layout(group),
+                entries=[
+                    wgpu.BindGroupEntry(
+                        binding=b.binding,
+                        resource=b.resource.resource_descriptor(),
+                    )
+                    for b in bindings
+                ]
+            )
+        else:
+            return None
+
     def make_label(self, tag):
         """naming: one of the two Karlton-hard CS problems"""
         return f'{self.name} {tag}'
@@ -109,32 +160,34 @@ class Pass(ABC):
         with open(path) as f:
             return f.read()
 
-    def instantiate_uniforms_bind_group(self, device, layout, binding=0):
-        """
-        create self.uniforms_bind_group.
-        If `layout` is a number, it's used as the group number for auto layout,
-        otherwise it's used as a bind group layout.
-        """
-        if isinstance(layout, int):
-            layout = self.pipeline.get_bind_group_layout(layout)
-        self.uniforms_bind_group = device.create_bind_group(
-            label=self.make_label('uniforms bind group'),
-            layout=layout,
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=binding,
-                    resource=self.uniform_buffer.resource_descriptor(),
-                ),
-            ],
-        )
-
 
 class ComputePass(Pass):
     
+    def instantiate_pipeline(self, device, shader_module):
+        self.pipeline = device.create_compute_pipeline(
+            label=self.make_label('pipeline'),
+            layout='auto',
+            compute=wgpu.ProgrammableStage(
+                module=shader_module,
+            ),
+        )
+        return self
+
     def instantiate_pass_descriptor(self):
         self.pass_descriptor = wgpu.ComputePassDescriptor(
             label=self.make_label('compute pass'),
         )
+        return self
+
+    def encode_compute_pass(self, encoder, workgroup_count):
+        cpass = encoder.begin_compute_pass(**self.pass_descriptor)
+        cpass.set_pipeline(self.pipeline)
+        for (i, bg) in enumerate(self.bind_groups):
+            if bg:
+                cpass.set_bind_group(i, bg)
+        cpass.dispatch_workgroups(workgroup_count)
+        cpass.end()
+        return self
 
 
 class RenderPass(Pass):
@@ -146,7 +199,7 @@ class RenderPass(Pass):
         vertex_entry=None,
         fragment_entry=None,
     ):
-        return device.create_render_pipeline(
+        self.pipeline = device.create_render_pipeline(
             label=self.make_label('pipeline'),
             layout='auto',
             vertex=wgpu.VertexState(
@@ -160,6 +213,7 @@ class RenderPass(Pass):
                 targets=self._color_targets()
             ),
         )
+        return self
 
     def _color_targets(self):
         return [
@@ -176,6 +230,7 @@ class RenderPass(Pass):
             label=self.make_label('render pass'),
             color_attachments=self._color_attachments(),
         )
+        return self
 
     def _color_attachments(self):
         return [
@@ -189,6 +244,16 @@ class RenderPass(Pass):
             for r in self.resources()
             if isinstance(r, Attachment)
         ]
+
+    def encode_render_pass_draw(self, encoder, vertex_count):
+        rpass = encoder.begin_render_pass(**self.pass_descriptor)
+        rpass.set_pipeline(self.pipeline)
+        # rpass.set_bind_group(0, self.input_bind_group)
+        for (i, bg) in enumerate(self.bind_groups):
+            if bg:
+                rpass.set_bind_group(i, bg)
+        rpass.draw(vertex_count)
+        rpass.end()
 
 
 class Subgraph(Pass):

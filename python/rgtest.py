@@ -197,7 +197,7 @@ class TestPass(passes.ComputePass):
 
     def resources(self):
         return [
-            passes.Binding('output', self.output, passes.Access.RW)
+            passes.Attachment('output', self.output, passes.Access.RW)
         ]
 
     def bind_output(self, out):

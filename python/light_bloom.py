@@ -44,8 +44,14 @@ class BloomSubgraph(Subgraph, Parameterized):
         shader_source = self.read_shader(shader_file)
         self.shader = Shader(shader_file, shader_source)
         self.mip_textures = None
-        self.downsamplers = [Downsampler(self.shader) for i in range(BLOOM_MIP_LEVELS)]
-        self.upsamplers = [Upsampler(self.shader) for i in range(BLOOM_MIP_LEVELS - 1)]
+        self.downsamplers = [
+            Downsampler(self.shader)
+            for i in range(BLOOM_MIP_LEVELS)
+        ]
+        self.upsamplers = [
+            Upsampler(self.shader)
+            for i in range(BLOOM_MIP_LEVELS - 1)
+        ]
         self.upsample_mixer = UpsampleMixer(self.shader)
         # DEBUG
         self.copier = CopyPass()
@@ -54,7 +60,7 @@ class BloomSubgraph(Subgraph, Parameterized):
         assert self.input is not None
         assert self.output is not None
         return [
-            Binding('input', self.input, Access.RO),
+            Binding(None, 'input', self.input, Access.RO),
             Attachment('output', self.output, Access.WO),
         ]
 
@@ -213,9 +219,9 @@ class Downsampler(RenderPass):
         assert self.uniform_buffer is not None
         assert self.output is not None
         return [
-            Binding('input', self.input, Access.RO),
-            Binding('input sampler', self.input_sampler, Access.RO),
-            Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding((0, 0), 'input', self.input, Access.RO),
+            Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
             Attachment('output', self.output),
         ]
 
@@ -240,21 +246,20 @@ class Downsampler(RenderPass):
         )
 
         # pipeline
-        self.pipeline = self.instantiate_pipeline(
+        self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='downsampler_fragment_shader',
         )
 
         # bind groups
-        self.instantiate_input_bind_group(device)
-        self.instantiate_uniforms_bind_group(device, 1)
+        self.instantiate_bind_groups(device)
 
         # render pass descriptor
         self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
-        self.instantiate_input_bind_group(device)
+        self.rebind_group(device, 'input')
 
     def execute(self, device, encoder):
         assert self.input is not None
@@ -273,28 +278,7 @@ class Downsampler(RenderPass):
         self.pass_descriptor.color_attachments[0].view = current_view
 
         vertex_count = 3
-        rpass = encoder.begin_render_pass(**self.pass_descriptor)
-        rpass.set_pipeline(self.pipeline)
-        rpass.set_bind_group(0, self.input_bind_group)
-        rpass.set_bind_group(1, self.uniforms_bind_group)
-        rpass.draw(vertex_count)
-        rpass.end()
-
-    def instantiate_input_bind_group(self, device):
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                ),
-            ],
-        )
+        self.encode_render_pass_draw(encoder, vertex_count)
 
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
@@ -326,9 +310,9 @@ class Upsampler(RenderPass, Parameterized):
         assert self.uniform_buffer is not None
         assert self.output is not None
         return [
-            Binding('input', self.input, Access.RO),
-            Binding('input sampler', self.input_sampler, Access.RO),
-            Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding((0, 0), 'input', self.input, Access.RO),
+            Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
             Attachment('output', self.output, blend=BlendMode.ADD),
         ]
 
@@ -349,21 +333,20 @@ class Upsampler(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.instantiate_pipeline(
+        self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='upsampler_fragment_shader',
         )
 
         # create bind groups
-        self.instantiate_input_bind_group(device)
-        self.instantiate_uniforms_bind_group(device, 1)
+        self.instantiate_bind_groups(device)
 
         # create render pass descriptor
         self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
-        self.instantiate_input_bind_group(device)
+        self.rebind_group(device, 'input')
 
     def execute(self, device, encoder):
         assert self.input is not None
@@ -381,28 +364,7 @@ class Upsampler(RenderPass, Parameterized):
         self.pass_descriptor.color_attachments[0].view = current_view
 
         vertex_count = 3
-        rpass = encoder.begin_render_pass(**self.pass_descriptor)
-        rpass.set_pipeline(self.pipeline)
-        rpass.set_bind_group(0, self.input_bind_group)
-        rpass.set_bind_group(1, self.uniforms_bind_group)
-        rpass.draw(vertex_count)
-        rpass.end()
-
-    def instantiate_input_bind_group(self, device):
-        self.input_bind_group = device.create_bind_group(
-            label=self.make_label('input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.input_sampler.resource_descriptor(),
-                ),
-            ],
-        )
+        self.encode_render_pass_draw(encoder, vertex_count)
 
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
@@ -440,11 +402,11 @@ class UpsampleMixer(RenderPass, Parameterized):
         assert self.uniform_buffer is not None
         assert self.output is not None
         return [
-            Binding('image input', self.image_input, Access.RO),
-            Binding('image sampler', self.image_sampler, Access.RO),
-            Binding('bloom input', self.bloom_input, Access.RO),
-            Binding('bloom sampler', self.bloom_sampler, Access.RO),
-            Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding((0, 0), 'image input', self.image_input, Access.RO),
+            Binding((0, 1), 'image sampler', self.image_sampler, Access.RO),
+            Binding((2, 0), 'bloom input', self.bloom_input, Access.RO),
+            Binding((2, 1), 'bloom sampler', self.bloom_sampler, Access.RO),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
             Attachment('output', self.output),
         ]
 
@@ -475,23 +437,21 @@ class UpsampleMixer(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.instantiate_pipeline(
+        self.instantiate_pipeline(
             device,
             shader_module,
             fragment_entry='upsample_mixer_fragment_shader',
         )
 
         # bind groups
-        self.instantiate_image_input_bind_group(device)
-        self.instantiate_bloom_input_bind_group(device)
-        self.instantiate_uniforms_bind_group(device, 1)
+        self.instantiate_bind_groups(device)
 
         # render pass descriptor
         self.instantiate_pass_descriptor()
 
     def resize(self, device, size):
-        self.instantiate_image_input_bind_group(device)
-        self.instantiate_bloom_input_bind_group(device)
+        self.rebind_group(device, 'image input')
+        self.rebind_group(device, 'bloom input')
 
     def execute(self, device, encoder):
         assert self.image_input is not None
@@ -512,42 +472,4 @@ class UpsampleMixer(RenderPass, Parameterized):
         self.pass_descriptor.color_attachments[0].view = current_view
 
         vertex_count = 3
-        rpass = encoder.begin_render_pass(**self.pass_descriptor)
-        rpass.set_pipeline(self.pipeline)
-        rpass.set_bind_group(0, self.image_input_bind_group)
-        rpass.set_bind_group(1, self.uniforms_bind_group)
-        rpass.set_bind_group(2, self.bloom_input_bind_group)
-        rpass.draw(vertex_count)
-        rpass.end()
-
-    def instantiate_image_input_bind_group(self, device):
-        self.image_input_bind_group = device.create_bind_group(
-            label=self.make_label('image input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.image_input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.image_sampler.resource_descriptor(),
-                ),
-            ],
-        )
-
-    def instantiate_bloom_input_bind_group(self, device):
-        self.bloom_input_bind_group = device.create_bind_group(
-            label=self.make_label('bloom input bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.bloom_input.current_view(),
-                ),
-                wgpu.BindGroupEntry(
-                    binding=1,
-                    resource=self.bloom_sampler.resource_descriptor(),
-                ),
-            ],
-        )
+        self.encode_render_pass_draw(encoder, vertex_count)

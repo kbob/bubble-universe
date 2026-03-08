@@ -38,8 +38,8 @@ class DrawingPass(RenderPass, Parameterized):
         assert self.uvs is not None
         assert self.uniform_buffer is not None
         return [
-            Binding('uv', self.uvs, Access.RO),
-            Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding((0, 0), 'uv', self.uvs, Access.RO),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
             Attachment(
                 'color output',
                 self.output,
@@ -66,27 +66,12 @@ class DrawingPass(RenderPass, Parameterized):
         )
 
         # pipeline
-        self.pipeline = self.instantiate_pipeline(device, shader_module)
+        self.instantiate_pipeline(device, shader_module)
 
         # bind groups
-        self.uv_bind_group = device.create_bind_group(
-            label=self.make_label('uv bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uvs.resource_descriptor(),
-                ),
-            ],
-        )
-        self.instantiate_uniforms_bind_group(device, 1)
-        # # Need to move ownership of self.pipeline
-        # # to RenderPass, then I can factor out create_bind_group()
-        # #
-        # # And then the whole 'instantiate' can be driven by self.resources()
-        #
-        # # self.uv_bind_group = self.create_bind_group(0, 'uv', self.uvs)
+        self.instantiate_bind_groups(device)
 
+        # pass descriptor
         self.instantiate_pass_descriptor()
 
     def execute(self, device, encoder):
@@ -115,10 +100,7 @@ class DrawingPass(RenderPass, Parameterized):
 
         self.pass_descriptor.color_attachments[0].view = current_view
 
-        vertex_count = 6 * self._parameters.seq_count * self._parameters.seq_length
-        rpass = encoder.begin_render_pass(**self.pass_descriptor)
-        rpass.set_pipeline(self.pipeline)
-        rpass.set_bind_group(0, self.uv_bind_group)
-        rpass.set_bind_group(1, self.uniforms_bind_group)
-        rpass.draw(vertex_count)
-        rpass.end()
+        vertex_count = (
+            6 * self._parameters.seq_count * self._parameters.seq_length
+        )
+        self.encode_render_pass_draw(encoder, vertex_count)

@@ -99,7 +99,7 @@ It would be awesome if `resources` became totally declarative.
 
   * add info to Binding and do likewise.
 
-
+  * can also refactor out `instantiate_shader()`, probably.
 
 ## `update_parameters`
 

@@ -35,8 +35,8 @@ class ParticleMotionPass(ComputePass, Parameterized):
         assert self.uvs
         assert self.uniform_buffer
         return [
-            Binding('uv', self.uvs, Access.WO),
-            Binding('uniforms', self.uniform_buffer, Access.RW),
+            Binding((0, 0), 'uv', self.uvs, Access.WO),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
         ]
 
     def bind_uvs(self, buffer):
@@ -52,25 +52,8 @@ class ParticleMotionPass(ComputePass, Parameterized):
             code=self.shader,
         )
 
-        self.pipeline = device.create_compute_pipeline(
-            label=self.make_label('pipeline'),
-            layout='auto',
-            compute=wgpu.ProgrammableStage(
-                module=shader_module,
-            ),
-        )
-
-        self.uv_bind_group = device.create_bind_group(
-            label=self.make_label('uv bind group'),
-            layout=self.pipeline.get_bind_group_layout(0),
-            entries=[
-                wgpu.BindGroupEntry(
-                    binding=0,
-                    resource=self.uvs.resource_descriptor(),
-                ),
-            ],
-        )
-        self.instantiate_uniforms_bind_group(device, 1)
+        self.instantiate_pipeline(device, shader_module)
+        self.instantiate_bind_groups(device)
         self.instantiate_pass_descriptor()
 
     def execute(self, device, encoder):
@@ -84,9 +67,4 @@ class ParticleMotionPass(ComputePass, Parameterized):
         self.uniform_buffer.write_buffer(device, uniforms.as_data())
 
         workgroup_count = ceil(self._parameters.seq_count / WORKGROUP_SIZE)
-        cpass = encoder.begin_compute_pass(**self.pass_descriptor)
-        cpass.set_pipeline(self.pipeline)
-        cpass.set_bind_group(0, self.uv_bind_group)
-        cpass.set_bind_group(1, self.uniforms_bind_group)
-        cpass.dispatch_workgroups(workgroup_count)
-        cpass.end()
+        self.encode_compute_pass(encoder, workgroup_count)
