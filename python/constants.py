@@ -19,5 +19,5 @@ class Defaults:
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
     CANVAS_SIZE = (675, 540)
     VIDEO_FILE = 'temp.mp4'
-    BLOOM_AMOUNT = 0.01
+    BLOOM_AMOUNT = 0.04
     BLOOM_SIZE = 0.005

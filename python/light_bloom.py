@@ -313,7 +313,12 @@ class Upsampler(RenderPass, Parameterized):
             Binding((0, 0), 'input', self.input, Access.RO),
             Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
             Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
-            Attachment('output', self.output, blend=BlendMode.ADD),
+            Attachment(
+                'output',
+                self.output,
+                blend=BlendMode.ADD,
+                load_op='load',
+            ),
         ]
 
     def bind_input(self, texture):

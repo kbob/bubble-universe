@@ -74,6 +74,7 @@ class Attachment(NamedTuple):
     resource: resources.Texture
     clear_value: tuple[int, int, int, int] = (0, 0, 0, 1)
     blend: BlendMode = BlendMode.COPY
+    load_op: str = 'clear'
 
 
 class Pass(ABC):
@@ -237,7 +238,7 @@ class RenderPass(Pass):
             # Nobody is overriding these defaults yet.
             wgpu.RenderPassColorAttachment(
                 clear_value=(0, 0, 0, 1),
-                load_op='clear',
+                load_op=r.load_op,
                 store_op='store',
                 view=...,
             )
