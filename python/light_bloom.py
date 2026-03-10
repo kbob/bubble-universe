@@ -4,7 +4,7 @@ import wgpu
 
 from constants import *
 from copier import CopyPass
-from parameterized import Parameterized
+from parameterized import ParameterizedMixIn
 from passes import Access, Attachment, Binding, BlendMode, RenderPass, Subgraph
 from resources import Sampler, Texture, UniformBuffer
 from wgsl_types import *
@@ -27,7 +27,7 @@ class Rotor:
 
 rotor = Rotor(1 + 2 * BLOOM_MIP_LEVELS + 5)
 
-class BloomSubgraph(Subgraph, Parameterized):
+class BloomSubgraph(Subgraph, ParameterizedMixIn):
 
     """light bloom"""
 
@@ -284,7 +284,7 @@ class Downsampler(RenderPass):
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Upsampler
 
-class Upsampler(RenderPass, Parameterized):
+class Upsampler(RenderPass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:
@@ -375,7 +375,7 @@ class Upsampler(RenderPass, Parameterized):
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## Upsample Mixer
 
-class UpsampleMixer(RenderPass, Parameterized):
+class UpsampleMixer(RenderPass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:

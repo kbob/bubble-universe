@@ -1,5 +1,4 @@
 from collections.abc import Mapping, MutableSequence
-from inspect import get_annotations
 from itertools import chain
 from typing import NamedTuple
 

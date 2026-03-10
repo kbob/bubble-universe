@@ -4,12 +4,12 @@ import wgpu
 
 from constants import *
 from passes import Access, Attachment, Binding, BlendMode, RenderPass
-from parameterized import Parameterized
+from parameterized import ParameterizedMixIn
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
 
-class DrawingPass(RenderPass, Parameterized):
+class DrawingPass(RenderPass, ParameterizedMixIn):
 
 
     @dataclass

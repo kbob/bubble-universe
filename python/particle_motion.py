@@ -4,13 +4,13 @@ import wgpu
 
 from constants import *
 from math import ceil
-from parameterized import Parameterized
+from parameterized import ParameterizedMixIn
 from passes import Access, Binding, ComputePass
 from resources import StorageBuffer, UniformBuffer
 from wgsl_types import *
 
 
-class ParticleMotionPass(ComputePass, Parameterized):
+class ParticleMotionPass(ComputePass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:

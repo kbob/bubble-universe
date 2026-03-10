@@ -1,11 +1,10 @@
 from dataclasses import dataclass
-from inspect import get_annotations
 
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
 from light_bloom import BloomSubgraph
-from parameterized import Parameterized
+from parameterized import ParameterizedMixIn
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
@@ -13,7 +12,7 @@ from tone_mapper import ToneMapPass
 from wgsl_types import *
 
 
-class BubblerHDR(Parameterized):
+class BubblerHDR(ParameterizedMixIn):
 
     @dataclass
     class Parameters:
@@ -107,7 +106,7 @@ class BubblerHDR(Parameterized):
                     .bind_input(self.image_texture)
                     .attach_output(out)
                 for out in outputs]
-            passes.extend(self.copiers)
+            passes += self.copiers
 
         # create render graph
 

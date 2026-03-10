@@ -65,6 +65,8 @@ or `attachment_changed`.  They rebuild the bind group/color attachment.
 
 ## Resources, Bindings, Attachments
 
+*This is done.*
+
 Should distinguish between bindings and attachments.
 the `bindings` method should be renamed `resources` and return
 a list containing both bindings and attachments.

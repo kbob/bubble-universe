@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from inspect import get_annotations
 import os.path
 from typing import NamedTuple
 

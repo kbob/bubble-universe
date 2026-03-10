@@ -1,17 +1,18 @@
 from dataclasses import dataclass
-from inspect import get_annotations
 
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
-from parameterized import Parameterized
+from light_bloom import BloomSubgraph
+from parameterized import ParameterizedMixIn
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
+from tone_mapper import ToneMapPass
 from wgsl_types import *
 
 
-class Bubbler(Parameterized):
+class Bubbler(ParameterizedMixIn):
 
     @dataclass
     class Parameters:
@@ -32,11 +33,12 @@ class Bubbler(Parameterized):
         self._last_size = None
 
 
-    def build_render_graph(self, device, outputs):
+    def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
         """first renderer controls the output size"""
         assert len(outputs) > 0
         self.device = device
         self.outputs = outputs
+        self._use_HDR = use_HDR
         self.resize_controller = self.outputs[0]
 
         # Create resources
@@ -47,6 +49,21 @@ class Bubbler(Parameterized):
             type_=vec2f,
             shape=(MAX_SEQ_COUNT, MAX_SEQ_LENGTH),
         )
+        if self._use_HDR:
+            self.HDR_image = Texture(
+                name='HDR image pre-bloom',
+                format=HDR_PIXEL_FORMAT,
+                shape=(*render_size, 4),
+                renderable=True,
+            )
+            self.bloomed_image = Texture(
+                name='HDR image post-bloom',
+                format=HDR_PIXEL_FORMAT,
+                shape=(*render_size, 4),
+                renderable=True,
+            )
+            drawing_dest = self.HDR_image
+
         self._last_size = render_size
         if self._is_multi_output:
             self.image_texture = Texture(
@@ -55,9 +72,11 @@ class Bubbler(Parameterized):
                 shape=(*render_size, 4),
                 renderable=True,
             )
-            drawing_dest = self.image_texture
+            image_dest = self.image_texture
         else:
-            drawing_dest = outputs[0]
+            image_dest = outputs[0]
+        if not self._use_HDR:
+            drawing_dest = image_dest
 
         # Create compute and render passes
 
@@ -65,7 +84,6 @@ class Bubbler(Parameterized):
             ParticleMotionPass()
                 .bind_uvs(self.uvs)
         )
-
         self.drawer = (
             DrawingPass()
                 .bind_uvs(self.uvs)
@@ -76,13 +94,30 @@ class Bubbler(Parameterized):
             self.drawer,
         ]
 
+        if self._use_HDR:
+            self.bloomer = (
+                BloomSubgraph()
+                    .bind_input(self.HDR_image)
+                    .attach_output(self.bloomed_image)
+            )
+            self.mapper = (
+                ToneMapPass()
+                    .bind_input(self.bloomed_image)
+                    .attach_output(image_dest)
+            )
+            passes += [
+                self.bloomer,
+                self.mapper,
+            ]
+
         if self._is_multi_output:
             self.copiers = [
                 CopyPass()
                     .bind_input(self.image_texture)
                     .attach_output(out)
-                for out in outputs]
-            passes.extend(self.copiers)
+                for out in outputs
+            ]
+            passes += self.copiers
 
         # create render graph
 

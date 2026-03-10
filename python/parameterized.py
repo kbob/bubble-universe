@@ -11,7 +11,7 @@
 from dataclasses import dataclass, fields, is_dataclass
 
 
-class Parameterized:
+class ParameterizedMixIn:
 
     def __init__(self):
         P = type(self).Parameters
@@ -34,7 +34,7 @@ class Parameterized:
 
 # Unit Test
 
-class Test(Parameterized):
+class Test(ParameterizedMixIn):
     @dataclass
     class Parameters:
         speed: float = 1.5
