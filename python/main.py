@@ -10,7 +10,6 @@ from rendercanvas.auto import RenderCanvas, loop
 import wgpu
 
 from bubbler import Bubbler
-from bubbler_HDR import BubblerHDR
 from constants import *
 from resources import CanvasTexture, Texture
 from video import VideoOutputFile
