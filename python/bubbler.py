@@ -34,7 +34,7 @@ class Bubbler(ParameterizedMixIn):
 
 
     def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
-        """first renderer controls the output size"""
+        """first render output controls the output size"""
         assert len(outputs) > 0
         self.device = device
         self.outputs = outputs

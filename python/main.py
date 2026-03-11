@@ -16,96 +16,81 @@ from video import VideoOutputFile
 
 
 def run(args):
-    adapter = wgpu.gpu.request_adapter_sync()
-    device = adapter.request_device_sync(
-        required_features=['float32-blendable', 'float32-filterable'],
-    )
 
-    canvas = RenderCanvas(
-        size=Defaults.CANVAS_SIZE,
-        title='Bubble Universe',
-        update_mode='continuous',
-        max_fps=MAX_FPS,
-        )
-    context = canvas.get_wgpu_context()
-    preferred_format = context.get_preferred_format(adapter)
-    context.configure(device=device, format=preferred_format)
+    # Process command
+    recording_video = False
+    duration = float('inf')
+    if args.cmd == 'record':
+        recording_video = True
+        duration = args.duration
+    else:
+        assert args.cmd is None
 
-    canvas_texture = CanvasTexture('display', context, preferred_format)
-
-    bubbler = Bubbler()
-    bubbler.build_render_graph(
-        device=device, 
-        outputs=[canvas_texture],
-        use_HDR=args.hdr,
-    )
-
-    def draw_frame():
-        bubbler.draw_frame()
-
-    canvas.request_draw(draw_frame)
-
-    loop.run()
-
-
-def run_record(args):
-    video_res = args.resolution
+    # Init wgsl
     adapter = wgpu.gpu.request_adapter_sync()
     device = adapter.request_device_sync()
 
+    # Init the on-screen canvas
+    output_res = args.resolution
     canvas = RenderCanvas(
-        size=video_res,
-        title='Bubble Universe',
+        size=output_res,
+        title=WINDOW_TITLE,
         update_mode='continuous',
         max_fps=args.fps,
-        )
+    )
     context = canvas.get_wgpu_context()
     preferred_format = context.get_preferred_format(adapter)
     context.configure(device=device, format=preferred_format)
-
     canvas_texture = CanvasTexture('display', context, preferred_format)
-    video_texture = Texture(
-        name='video',
-        format='rgba8unorm-srgb',
-        shape=(*video_res, 4),
-        renderable=True,
-        readable=True,
-    )
+    output_textures = [canvas_texture]
 
-    # init video out
-    video_out = VideoOutputFile(args.output, video_res, fps=args.fps)
+    # Init the video file output
+    if recording_video:
+        video_texture = Texture(
+            name='video',
+            format='rgba8unorm-srgb',
+            shape=(*output_res, 4),
+            renderable=True,
+            readable=True,
+        )
+        video_out = VideoOutputFile(args.output, output_res, fps=args.fps)
+        # video texture comes first because it controls the output resolution
+        output_textures = [video_texture] + output_textures
 
+    # Init the bubbler
     bubbler = Bubbler()
     bubbler.update_parameters(fps=args.fps)
     bubbler.build_render_graph(
-        device=device, 
-        outputs=[video_texture, canvas_texture],
+        device=device,
+        outputs=output_textures,
         use_HDR=args.hdr,
     )
 
+    # Define the main loop
     frame_num = 0
-
     def draw_frame():
         bubbler.draw_frame()
 
-        # read frame and save to video file
-        texture_data = video_texture.read_texture(device)
-        image_data = (
-            np.frombuffer(texture_data, dtype=np.uint8)
-            .reshape((*video_res[::-1], 4))
-        )
-        video_out.append_frame(image_data)
+        if recording_video:
+            texture_data = video_texture.read_texture(device)
+            image_data = (np
+                .frombuffer(texture_data, dtype=np.uint8)
+                .reshape((*output_res[::-1], 4))
+            )
+            video_out.append_frame(image_data)
 
-        # stop after enough frames
-        nonlocal frame_num
-        frame_num += 1
-        if frame_num == args.duration:
-            loop.stop()
+            nonlocal frame_num
+            frame_num += 1
+            if frame_num == duration:
+                loop.stop()
 
+    # Run the main loop
     canvas.request_draw(draw_frame)
-
     loop.run()
-    video_out.close()
+
+    # Finish
+    if recording_video:
+        video_out.close()
 
 
 def build_argparser():
@@ -118,7 +103,7 @@ def build_argparser():
         return (int(m.group(1)), int(m.group(2)))
 
 
-    # Main parser and global  args
+    # Main parser and global args
     parser = argparse.ArgumentParser(
         prefix_chars='-+',
         allow_abbrev=True,
@@ -126,11 +111,25 @@ def build_argparser():
         description='Explore the bubble universe',
     )
     parser.add_argument(
+        '-r', '--resolution',
+        type=resolution,
+        default=Defaults.CANVAS_SIZE,
+
+        help=f'set video resolution (default {Defaults.CANVAS_SIZE})',
+    )
+    parser.add_argument(
         '+h', '--no-hdr',
         dest='hdr',
         action='store_false',
 
         help='do not render in high dynamic range (HDR)'
+    )
+    parser.add_argument(
+        '-f', '--fps',
+        type=int,
+        default=MAX_FPS,
+
+        help=f'set frames per second (default {MAX_FPS})',
     )
     subparsers = parser.add_subparsers(
         dest='cmd',
@@ -156,20 +155,6 @@ def build_argparser():
         help=f'output file (default {Defaults.VIDEO_FILE})',
     )
     rec_parser.add_argument(
-        '-r', '--resolution',
-        type=resolution,
-        default=Defaults.CANVAS_SIZE,
-
-        help=f'set video resolution (default {Defaults.CANVAS_SIZE})',
-    )
-    rec_parser.add_argument(
-        '-f', '--fps',
-        type=int,
-        default=MAX_FPS,
-
-        help=f'set frames per second (default {MAX_FPS})',
-    )
-    rec_parser.add_argument(
         '-d', '--duration',
         type=int,
         default=default_frame_count,
@@ -183,11 +168,7 @@ def build_argparser():
 def main():
     parser = build_argparser()
     args = parser.parse_args(sys.argv[1:])
-    if args.cmd == 'record':
-        run_record(args)
-    else:
-        assert args.cmd is None
-        run(args)
+    run(args)
 
 if __name__ == '__main__':
     main()

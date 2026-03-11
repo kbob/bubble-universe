@@ -52,7 +52,7 @@ class BlendMode(Enum):
 
 
 class Binding(NamedTuple):
-    """A wgpu binding used by a pass"""
+    """A reference to a wgpu binding used by a pass"""
     group_binding: tuple[int, int] | None # None for non-wgpu passes
     name: str
     resource: resources.Resource
@@ -68,7 +68,7 @@ class Binding(NamedTuple):
 
 
 class Attachment(NamedTuple):
-    """A render pass's attachment (drawing texture)"""
+    """A reference to a render pass's attachment (drawing texture)"""
     name: str
     resource: resources.Texture
     clear_value: tuple[int, int, int, int] = (0, 0, 0, 1)
@@ -122,6 +122,10 @@ class Pass(ABC):
         return self
 
     def rebind_group(self, device, name):
+        """
+            Recreate a bind_group.  `name` specifies any of the resources
+            in the group.
+        """
         bindings = [r for r in self.resources() if isinstance(r, Binding)]
         binding = [b for b in bindings if b.name == name][0]
         group = binding.group

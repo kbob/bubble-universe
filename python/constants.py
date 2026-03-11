@@ -1,6 +1,7 @@
 from math import tau
 
 # Internal/performance constants
+WINDOW_TITLE = 'Bubble Universe'
 MAX_FPS = 60                    # FPS = frames/second
 MAX_SEQ_COUNT = 2000
 MAX_SEQ_LENGTH = 2000
