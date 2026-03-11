@@ -145,9 +145,19 @@ class Bubbler(ParameterizedMixIn):
         size = self.resize_controller.current_size()
         if self._last_size != size:
             self._last_size = size
+
+            # Resize textures
+            if self._use_HDR:
+                self.HDR_image.resize(self.device, size)
+                self.bloomed_image.resize(self.device, size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, size)
-                self.drawer.bind_color_output(self.image_texture)
+
+            # Resize passes
+            if self._use_HDR:
+                self.bloomer.resize(self.device, size)
+                self.mapper.resize(self.device, size)
+            if self._is_multi_output:
                 for cp in self.copiers:
                     cp.resize(self.device, size)
 
