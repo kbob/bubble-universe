@@ -23,6 +23,7 @@
 from dataclasses import dataclass
 from functools import cache
 from inspect import get_annotations, isfunction, ismethod
+from math import ceil
 from typing import NamedTuple
 
 import numpy as np
@@ -54,6 +55,9 @@ class _classproperty:
         self.f = f
     def __get__(self, obj, owner):
         return self.f(owner)
+
+def _next_multiple(x, m):
+    return ceil(x / m) * m
 
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
@@ -352,10 +356,17 @@ class Uniforms(metaclass=_UniformsMeta):
 
     @_classproperty
     @cache
+    def align(cls):
+        info = cls._field_info
+        return max((f.align for f in info), default=0)
+
+    @_classproperty
+    @cache
     def bytes(cls):
         info = cls._field_info
         if info:
-            return info[-1].offset + info[-1].bytes
+            end = info[-1].offset + info[-1].bytes
+            return _next_multiple(end, cls.align)
         else:
             return 0
 
@@ -405,6 +416,9 @@ assert test._field_info[0].offset == 0
 assert Test._field_info[1].offset == 4
 assert test._field_info[2].offset == 16
 assert Test._field_info[3].offset == 32
+assert Test.align == 16
+assert test.align == 16
+assert Test.bytes == 48
 assert test.bytes == 48
 assert test.dtype == [
     ('index',    'u4'),
@@ -430,4 +444,20 @@ assert type(test.pt) is vec4f
 data = test.as_data()
 assert np.all(data['p3'] == test.p3)
 
-del Test, test
+class Test2(Uniforms):
+    v: vec2f
+    s: f32
+
+assert Test2.align == 8
+assert Test2.bytes == 16
+assert Test2._field_info[0].name == 'v'
+assert Test2._field_info[0].offset == 0
+assert Test2._field_info[0].bytes == 8
+assert Test2._field_info[0].align == 8
+assert Test2._field_info[1].name == 's'
+assert Test2._field_info[1].offset == 8
+assert Test2._field_info[1].bytes == 4
+assert Test2._field_info[1].align == 4
+
+
+del Test, test, Test2

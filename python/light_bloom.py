@@ -291,7 +291,7 @@ class Upsampler(RenderPass, ParameterizedMixIn):
         bloom_size: float = Defaults.BLOOM_SIZE
 
     class _Uniforms(Uniforms):
-        filter_radius: f32
+        filter_radius: vec2f
 
     def __init__(self, shader):
         super().__init__('bloom upsampler')
@@ -359,10 +359,19 @@ class Upsampler(RenderPass, ParameterizedMixIn):
         assert self.uniform_buffer is not None
         assert self.output is not None
 
+        current_size = self.output.current_size()
         current_view = self.output.current_view()
 
+        def adjust_for_aspect(x):
+            w, h = current_size
+            assert w != 0 and h != 0
+            if h > w:
+                return (x, x * w / h)
+            else:
+                return (x * h / w, x)
+
         uniforms = self._Uniforms(
-            filter_radius = self._parameters.bloom_size,
+            filter_radius = adjust_for_aspect(self._parameters.bloom_size),
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())        
 
@@ -383,9 +392,9 @@ class UpsampleMixer(RenderPass, ParameterizedMixIn):
         bloom_amount: float = Defaults.BLOOM_AMOUNT
 
     class _Uniforms(Uniforms):
-        filter_radius: f32 = Defaults.BLOOM_SIZE
+        filter_radius: vec2f
         bloom_strength: f32 = Defaults.BLOOM_AMOUNT
-    
+
     def __init__(self, shader):
         super().__init__('bloom upsample mixer')
         self.image_input = None
@@ -466,10 +475,19 @@ class UpsampleMixer(RenderPass, ParameterizedMixIn):
         assert self.uniform_buffer is not None
         assert self.output is not None
 
+        current_size = self.output.current_size()
         current_view = self.output.current_view()
 
+        def adjust_for_aspect(x):
+            w, h = current_size
+            assert w != 0 and h != 0
+            if h > w:
+                return (x, x * w / h)
+            else:
+                return (x * h / w, x)
+
         uniforms = self._Uniforms(
-            filter_radius = self._parameters.bloom_size,
+            filter_radius = adjust_for_aspect(self._parameters.bloom_size),
             bloom_strength = self._parameters.bloom_amount,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())        

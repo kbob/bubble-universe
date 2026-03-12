@@ -8,11 +8,11 @@ struct DSUniforms {
 };
 
 struct USUniforms {
-    filter_radius: f32,
+    filter_radius: vec2f,
 };
 
 struct USMUniforms {
-    filter_radius: f32,
+    filter_radius: vec2f,
     bloom_strength: f32,
 };
 
@@ -115,8 +115,8 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
     let S = in_sampler;
     let x = in.texcoord.x;
     let y = in.texcoord.y;
-    let dx = U.filter_radius;
-    let dy = U.filter_radius;
+    let dx = U.filter_radius.x;
+    let dy = U.filter_radius.y;
     let upsample = blurred(C, S, x, y, dx, dy);
 
     return vec4f(upsample.rgb, 1.0);
@@ -133,8 +133,8 @@ fn blurred(T: texture_2d<f32>, S: sampler, x: f32, y: f32, dx: f32, dy: f32) -> 
     let xy = in.texcoord;
     let x = xy.x;
     let y = xy.y;
-    let dx = U.filter_radius;
-    let dy = U.filter_radius;
+    let dx = U.filter_radius.x;
+    let dy = U.filter_radius.y;
     let a = textureSample(C, CS, xy);
     let b = blurred(B, BS, x, y, dx, dy);
     var mx = mix(a.rgb, b.rgb, U.bloom_strength);
