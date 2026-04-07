@@ -221,7 +221,7 @@ class Downsampler(RenderPass):
         return [
             Binding((0, 0), 'input', self.input, Access.RO),
             Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
-            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RO),
             Attachment('output', self.output),
         ]
 
@@ -312,7 +312,7 @@ class Upsampler(RenderPass, ParameterizedMixIn):
         return [
             Binding((0, 0), 'input', self.input, Access.RO),
             Binding((0, 1), 'input sampler', self.input_sampler, Access.RO),
-            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RO),
             Attachment(
                 'output',
                 self.output,
@@ -420,7 +420,7 @@ class UpsampleMixer(RenderPass, ParameterizedMixIn):
             Binding((0, 1), 'image sampler', self.image_sampler, Access.RO),
             Binding((2, 0), 'bloom input', self.bloom_input, Access.RO),
             Binding((2, 1), 'bloom sampler', self.bloom_sampler, Access.RO),
-            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RO),
             Attachment('output', self.output),
         ]
 

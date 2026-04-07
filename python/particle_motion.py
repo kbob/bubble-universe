@@ -32,11 +32,11 @@ class ParticleMotionPass(ComputePass, ParameterizedMixIn):
         self.shader = self.read_shader(self.shader_file)
 
     def resources(self):
-        assert self.uvs
-        assert self.uniform_buffer
+        assert self.uvs is not None
+        assert self.uniform_buffer is not None
         return [
             Binding((0, 0), 'uv', self.uvs, Access.WO),
-            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RW),
+            Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RO),
         ]
 
     def bind_uvs(self, buffer):
@@ -45,7 +45,7 @@ class ParticleMotionPass(ComputePass, ParameterizedMixIn):
 
     def instantiate(self, device):
         assert self.shader
-        assert self.uvs
+        assert self.uvs is not None
 
         shader_module = device.create_shader_module(
             label=self.make_label(f'shader {self.shader_file}'),

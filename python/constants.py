@@ -22,3 +22,4 @@ class Defaults:
     VIDEO_FILE = 'temp.mp4'
     BLOOM_AMOUNT = 0.03 / PARTICLE_SIZE
     BLOOM_SIZE = 0.005
+    THEME = 'Classic'

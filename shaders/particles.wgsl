@@ -17,6 +17,9 @@ struct Uniforms {
 @compute @workgroup_size(64)
 fn compute_shader(@builtin(global_invocation_id) id: vec3u) {
 
+  // rectangular_grid(id);
+  // return;
+
   let U = uniforms;
 
   let i = id.x;
@@ -48,6 +51,21 @@ fn compute_shader(@builtin(global_invocation_id) id: vec3u) {
       v = cos(fi + v) + cos(U.r * fi + x);
       x = u + U.t;
       uvs[i * U.seq_length + j] = vec2f(u, -v);
+    }
+  }
+}
+
+fn rectangular_grid(id: vec3u) {
+
+  let U = uniforms;
+
+  let i: u32 = id.x;
+  let fi: f32 = f32(i);
+  let u: f32 = fi / f32(U.seq_count - 1) * 4.0 - 2.0;
+  if i < U.seq_count {
+    for (var j = 0u; j < U.seq_length; j++) {
+      let v: f32 = f32(j) / f32(U.seq_length - 1) * 4.0 - 2.0;
+      uvs[i * U.seq_length + j] = vec2f(u, v);
     }
   }
 }

@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 
+from colors import ColormapPass
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
+from drawer_mapped import ColorMappedDrawingPass
 from light_bloom import BloomSubgraph
 from parameterized import ParameterizedMixIn
 from particle_motion import ParticleMotionPass
@@ -30,7 +32,8 @@ class Bubbler(ParameterizedMixIn):
     def __init__(self):
         super().__init__()
         self._time = 0
-        self._last_size = None
+        self._last_cmap_size = None
+        self._last_render_size = None
 
 
     def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
@@ -43,7 +46,14 @@ class Bubbler(ParameterizedMixIn):
 
         # Create resources
 
+        cmap_size = (self._parameters.seq_count, self._parameters.seq_length)
         render_size = outputs[0].current_size()
+        self.colormap = Texture(
+            name='colormap',
+            format='rgba8unorm',
+            shape=(*cmap_size, 4),
+            renderable=True,
+        )
         self.uvs = StorageBuffer(
             name='uvs',
             type_=vec2f,
@@ -64,7 +74,8 @@ class Bubbler(ParameterizedMixIn):
             )
             drawing_dest = self.HDR_image
 
-        self._last_size = render_size
+        self._last_cmap_size = cmap_size
+        self._last_render_size = render_size
         if self._is_multi_output:
             self.image_texture = Texture(
                 name='image',
@@ -80,16 +91,30 @@ class Bubbler(ParameterizedMixIn):
 
         # Create compute and render passes
 
+        self.colors = (
+            ColormapPass()
+                .attach_colormap_output(self.colormap)
+        )
         self.particles = (
             ParticleMotionPass()
                 .bind_uvs(self.uvs)
         )
-        self.drawer = (
-            DrawingPass()
-                .bind_uvs(self.uvs)
-                .attach_color_output(drawing_dest)
-        )
+        MAP_ME = True
+        if MAP_ME:
+            self.drawer = (
+                ColorMappedDrawingPass()
+                    .bind_uvs(self.uvs)
+                    .bind_colormap(self.colormap)
+                    .attach_color_output(drawing_dest)
+            )
+        else:
+            self.drawer = (
+                DrawingPass()
+                    .bind_uvs(self.uvs)
+                    .attach_color_output(drawing_dest)
+            )
         passes = [
+            self.colors,
             self.particles,
             self.drawer,
         ]
@@ -128,6 +153,9 @@ class Bubbler(ParameterizedMixIn):
 
         # update passes' parameters
 
+        self.colors.update_parameters(
+            t=self._time,
+        )
         self.particles.update_parameters(
             seq_count=self._parameters.seq_count,
             seq_length=self._parameters.seq_length,
@@ -142,24 +170,31 @@ class Bubbler(ParameterizedMixIn):
 
         # Set intermediate textures' sizes
 
-        size = self.resize_controller.current_size()
-        if self._last_size != size:
-            self._last_size = size
+        cmap_size = (self._parameters.seq_count, self._parameters.seq_length)
+        if self._last_cmap_size != cmap_size:
+            self._last_cmap_size = cmap_size
+
+            # Resize colormap
+            self.colormap.resize(self.device, cmap_size)
+
+        render_size = self.resize_controller.current_size()
+        if self._last_render_size != render_size:
+            self._last_render_size = render_size
 
             # Resize textures
             if self._use_HDR:
-                self.HDR_image.resize(self.device, size)
-                self.bloomed_image.resize(self.device, size)
+                self.HDR_image.resize(self.device, render_size)
+                self.bloomed_image.resize(self.device, render_size)
             if self._is_multi_output:
-                self.image_texture.resize(self.device, size)
+                self.image_texture.resize(self.device, render_size)
 
             # Resize passes
             if self._use_HDR:
-                self.bloomer.resize(self.device, size)
-                self.mapper.resize(self.device, size)
+                self.bloomer.resize(self.device, render_size)
+                self.mapper.resize(self.device, render_size)
             if self._is_multi_output:
                 for cp in self.copiers:
-                    cp.resize(self.device, size)
+                    cp.resize(self.device, render_size)
 
         # Run the compute and render passes
 

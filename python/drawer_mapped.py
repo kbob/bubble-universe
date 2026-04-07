@@ -1,15 +1,15 @@
 from dataclasses import dataclass
 
-import wgpu
+# import wgpu
 
 from constants import *
 from passes import Access, Attachment, Binding, BlendMode, RenderPass
 from parameterized import ParameterizedMixIn
+from resources import Sampler
 from wgsl_types import *
 
 
-class DrawingPass(RenderPass, ParameterizedMixIn):
-
+class ColorMappedDrawingPass(RenderPass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:
@@ -30,7 +30,13 @@ class DrawingPass(RenderPass, ParameterizedMixIn):
         super().__init__(name)
         self.uvs = None
         self.output = None
-        self.shader_file = 'draw.wgsl'
+        self.colormap = None
+        self.colormap_sampler = Sampler(
+            name='colormap sampler',
+            min_filter='linear',
+            mag_filter='linear',
+        )
+        self.shader_file = 'draw_mapped.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
     def resources(self):
@@ -39,6 +45,13 @@ class DrawingPass(RenderPass, ParameterizedMixIn):
         return [
             Binding((0, 0), 'uv', self.uvs, Access.RO),
             Binding((1, 0), 'uniforms', self.uniform_buffer, Access.RO),
+            Binding((2, 0), 'colormap', self.colormap, Access.RO),
+            Binding(
+                (2, 1),
+                'colormap sampler',
+                self.colormap_sampler,
+                Access.RO,
+            ),
             Attachment(
                 'color output',
                 self.output,
@@ -48,6 +61,10 @@ class DrawingPass(RenderPass, ParameterizedMixIn):
 
     def bind_uvs(self, buffer):
         self.uvs = buffer
+        return self
+
+    def bind_colormap(self, colormap):
+        self.colormap = colormap
         return self
 
     def attach_color_output(self, texture):

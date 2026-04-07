@@ -119,6 +119,7 @@ class Pass(ABC):
             )
             for i in range(group_count)
         ]
+        assert all(bg for bg in self.bind_groups)
         return self
 
     def rebind_group(self, device, name):
@@ -252,7 +253,6 @@ class RenderPass(Pass):
     def encode_render_pass_draw(self, encoder, vertex_count):
         rpass = encoder.begin_render_pass(**self.pass_descriptor)
         rpass.set_pipeline(self.pipeline)
-        # rpass.set_bind_group(0, self.input_bind_group)
         for (i, bg) in enumerate(self.bind_groups):
             if bg:
                 rpass.set_bind_group(i, bg)
