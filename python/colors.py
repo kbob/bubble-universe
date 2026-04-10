@@ -9,13 +9,17 @@ from passes import Access, Attachment, Binding, RenderPass
 from wgsl_types import *
 
 
+# In 2026 I still don't put non-ASCII in source code.
+# In 2026 I still use obscure historically questionable spellings.
+OE = '\N{LATIN CAPITAL LIGATURE OE}'
 class Theme(StrEnum):
     CLASSIC = 'Classic'
     VAPOR = 'Vapor'
     MIDNIGHT = 'Midnight'
     FIESTA = 'Fiesta'
-    EASTER = 'Œstre'
+    EASTER = f'{OE}stre'
     BONE = 'Bone'
+    OSCOPE = 'Oscilloscope'
 
     @classmethod
     def from_int(cls, n):
@@ -24,18 +28,28 @@ class Theme(StrEnum):
     def __int__(self):
         return list(type(self)).index(self)
 
+    @enum.property
+    def colors_animated(self):
+        return False            # maybe someday
+    
+    @enum.property
+    def background_animated(self):
+        return self in {self.MIDNIGHT, self.VAPOR}
+
+
 vapor = Theme.VAPOR
 # print(f'{vapor = }')
 # print(f'{int(vapor) = }')
 # print(f'{Theme.from_int(1) = }')
 # print(f'{Theme('Vapor') = }')
-# print(f'{Theme('Œstre') = }')
+# print(f'{Theme(f'{OE}stre') = }')
 assert vapor == Theme.VAPOR
 assert int(vapor) == 1
 assert Theme.from_int(1) == vapor
 assert Theme('Vapor') == vapor
-assert Theme('Œstre') == Theme.EASTER
-
+assert Theme(f'{OE}stre') == Theme.EASTER
+assert not vapor.colors_animated
+assert vapor.background_animated
 
 class ColormapPass(RenderPass, ParameterizedMixIn):
 
@@ -55,9 +69,14 @@ class ColormapPass(RenderPass, ParameterizedMixIn):
     def __init__(self, name='colors'):
         super().__init__(name)
         self.colormap = None
-        self._prev_theme = None
+        self._enabled = True
         self.shader_file = 'colors.wgsl'
         self.shader = self.read_shader(self.shader_file)
+
+    def update_parameters(self, **kwargs):
+        if 'theme' in kwargs and kwargs['theme'] != self._parameters.theme:
+            self._enabled = True
+        super().update_parameters(**kwargs)
 
     def resources(self):
         assert self.colormap is not None
@@ -85,6 +104,11 @@ class ColormapPass(RenderPass, ParameterizedMixIn):
         self.instantiate_pass_descriptor()
 
     def execute(self, device, encoder):
+
+        if not self._enabled:
+            return
+        if not self._parameters.theme.colors_animated:
+            self._enabled = False
 
         # Get the output texture.
         current_texture = self.colormap.current_texture()

@@ -6,6 +6,7 @@ from copier import CopyPass
 from drawer import DrawingPass
 from drawer_mapped import ColorMappedDrawingPass
 from light_bloom import BloomSubgraph
+from mixer import MixerPass
 from parameterized import ParameterizedMixIn
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
@@ -34,6 +35,7 @@ class Bubbler(ParameterizedMixIn):
         self._time = 0
         self._last_cmap_size = None
         self._last_render_size = None
+        self._theme_ramp = [0] # push initial blend amount
 
 
     def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
@@ -48,6 +50,18 @@ class Bubbler(ParameterizedMixIn):
 
         cmap_size = (self._parameters.seq_count, self._parameters.seq_length)
         render_size = outputs[0].current_size()
+        self.colormap_A = Texture(
+            name='colormap A',
+            format='rgba8unorm',
+            shape=(*cmap_size, 4),
+            renderable=True,
+        )
+        self.colormap_B = Texture(
+            name='colormap B',
+            format='rgba8unorm',
+            shape=(*cmap_size, 4),
+            renderable=True,
+        )
         self.colormap = Texture(
             name='colormap',
             format='rgba8unorm',
@@ -91,9 +105,20 @@ class Bubbler(ParameterizedMixIn):
 
         # Create compute and render passes
 
-        self.colors = (
-            ColormapPass()
-                .attach_colormap_output(self.colormap)
+        self.colors_A = (
+            ColormapPass('colors A')
+                .attach_colormap_output(self.colormap_A)
+        )
+        self.colors_B = (
+            ColormapPass('colors B')
+                .attach_colormap_output(self.colormap_B)
+        )
+        self._active_colors = self.colors_A
+        self.color_mixer = (
+            MixerPass()
+                .bind_input_A(self.colormap_A)
+                .bind_input_B(self.colormap_B)
+                .attach_output(self.colormap)
         )
         self.particles = (
             ParticleMotionPass()
@@ -114,7 +139,9 @@ class Bubbler(ParameterizedMixIn):
                     .attach_color_output(drawing_dest)
             )
         passes = [
-            self.colors,
+            self.colors_A,
+            self.colors_B,
+            self.color_mixer,
             self.particles,
             self.drawer,
         ]
@@ -153,7 +180,13 @@ class Bubbler(ParameterizedMixIn):
 
         # update passes' parameters
 
-        self.colors.update_parameters(
+        if self._theme_ramp:
+            mix_amount = self._theme_ramp.pop()
+            self.color_mixer.update_parameters(enabled=True, amount=mix_amount)
+        else:
+            self.color_mixer.update_parameters(enabled=False)
+
+        self._active_colors.update_parameters(
             t=self._time,
         )
         self.particles.update_parameters(
@@ -205,6 +238,22 @@ class Bubbler(ParameterizedMixIn):
         self._inc_time(1 / self._parameters.fps)
 
 
+    def change_theme(self, theme, frames=1):
+        ramp = [
+            _smoothstep(0, frames, i)
+            for i in range(frames + 1)
+        ]
+
+        if self._active_colors == self.colors_A:
+            self.colors_B.update_parameters(theme=theme)
+            self._theme_ramp.extend(ramp[:0:-1])
+            self._active_colors = self.colors_B
+        else:
+            self.colors_A.update_parameters(theme=theme)
+            self._theme_ramp.extend(ramp[1:])
+            self._active_colors = self.colors_A
+
+
     @property
     def _is_multi_output(self):
         return len(self.outputs) > 1
@@ -218,3 +267,8 @@ class Bubbler(ParameterizedMixIn):
             self._time += tau
         if self._time >= tau:
             self._time -= tau
+
+def _smoothstep(e0, e2, x):
+    assert e0 != e2
+    sx = max(0, min(1, (x - e0) / (e2 - e0)))
+    return -2 * sx**3 + 3 * sx**2

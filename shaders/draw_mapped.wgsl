@@ -63,14 +63,13 @@ struct InterStage {
 
   let i = in.ij[0];
   let j = in.ij[1];
-  let u = f32(i) / f32(U.seq_count - 1);
-  let v = f32(j) / f32(U.seq_length - 1);
+  let u = f32(i) / f32(U.seq_count - 1u);
+  let v = f32(j) / f32(U.seq_length - 1u);
   let uv = vec2f(u, v);
   let color = textureSample(color_map, color_sampler, uv);
 
   let rad2 = dot(in.pt, in.pt);
   var a = color.a * (1.0 - rad2);
-  // a = 1.0;
   if a < 0.01 {
     a = 0.0;
     discard;

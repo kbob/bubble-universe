@@ -1,4 +1,4 @@
-const INV_PHI: f32 = (sqrt(5.0) - 1) / 2.0;
+const INV_PHI: f32 = (sqrt(5.0) - 1.0) / 2.0;
 
 struct Uniforms {
     seq_count: u32,
@@ -34,23 +34,28 @@ struct InterStage {
 @fragment fn fragment_shader(
     in: InterStage,
 ) -> @location(0) vec4f {
+
     let U = uniforms;
-    if U.theme == 5 {
+
+    if U.theme == 6u {
+        return oscope_color(in);
+    }
+    if U.theme == 5u {
         return bone_color(in);
     }
-    if U.theme == 4 {
+    if U.theme == 4u {
         return easter_color(in);
     }
-    if U.theme == 3 {
+    if U.theme == 3u {
         return fiesta_color(in);
     }
-    if U.theme == 2 {
+    if U.theme == 2u {
         return midnight_color(in);
     }
-    if U.theme == 1 {
+    if U.theme == 1u {
         return vapor_color(in);
     }
-    // Use classic for any unknown themes too.
+    // Use classic for 0u and any unknown themes too.
     return classic_color(in);
 }
 
@@ -71,7 +76,7 @@ fn vapor_color(in: InterStage) -> vec4f {
 }
 
 fn midnight_color(in: InterStage) -> vec4f {
-    let r = 0.1 * in.texcoord.x * in.texcoord.y;
+    let r = 0.005 * in.texcoord.x * in.texcoord.y;
     let g = 0.0;
     let b = 0.2 + 0.6 * in.texcoord.y;
     let a = 1.0;
@@ -110,6 +115,14 @@ fn bone_color(in: InterStage) -> vec4f {
     let v = 0.6 + 0.3 * in.texcoord.y;
     let a = 1.0;
     return vec4f(hsv_to_rgb(h, s, v), a);
+}
+
+fn oscope_color(in: InterStage) -> vec4f {
+    let r = 0.0;
+    let g = 0.1875;   // 12/64
+    let b = 0.015625; // 1/64
+    let a = 1.0;
+    return vec4f(r, g, b, a);
 }
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {

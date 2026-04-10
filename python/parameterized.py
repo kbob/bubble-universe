@@ -20,7 +20,7 @@ class ParameterizedMixIn:
 
     def update_parameters(self, **kwargs):
         """returns self so this method can be chained"""
-        P = type(self).Parameters
+        P = self.Parameters
         for (k, v) in kwargs.items():
             field_finder = (f for f in fields(P) if f.name == k)
             try:

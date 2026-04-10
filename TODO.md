@@ -44,11 +44,12 @@
 ## Internal changes
 
 * &#x2705; factor out parameter handling
-* Bubbler and BubblerHDR need to be merged.
-
+* &#x2705; Bubbler and BubblerHDR need to be merged.
+* Mixer can reuse one sampler.
+* Uniforms can be refactored.
 
 ## Bloom changes
 
 * &#x2705; Redesign subgraph construction
 * &#x274c; Use float32
-* Does upsampler `filter_radius` need to be a vec2f?
+* &#x2705; Does upsampler `filter_radius` need to be a vec2f?
