@@ -1,5 +1,3 @@
-import wgpu
-
 from passes import Access, Attachment, Binding, RenderPass
 from resources import Sampler
 

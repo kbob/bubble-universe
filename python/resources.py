@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from functools import reduce
 import operator
 import re
+import sys
 
 import wgpu
 
@@ -160,6 +161,9 @@ class Texture(Resource):
         return self.texture
 
     def resize(self, device, size):
+        if self.texture is None:
+            print(f'Texture {self.name} is not instantiated', file=sys.stderr)
+            return
         # destroy texture
         # create texture
         # create view

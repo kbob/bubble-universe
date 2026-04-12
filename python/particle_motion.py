@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import wgpu
-
 from constants import *
 from math import ceil
 from parameterized import ParameterizedMixIn

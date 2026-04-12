@@ -68,9 +68,9 @@ fn classic_color(in: InterStage) -> vec4f {
 }
 
 fn vapor_color(in: InterStage) -> vec4f {
-    let h = 0.6 + 0.4 * in.texcoord.x;
+    let h = 0.6 + 0.3 * in.texcoord.x;
     let s = 0.8;
-    let v = 0.5 + 1.0 * in.texcoord.y;
+    let v = 0.5 + min(0.5, in.texcoord.y) - 0.5 * in.texcoord.x;
     let a = 1.0;
     return vec4f(hsv_to_rgb(h, s, v), a);
 }

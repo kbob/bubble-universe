@@ -34,7 +34,7 @@ class Theme(StrEnum):
     
     @enum.property
     def background_animated(self):
-        return self in {self.MIDNIGHT, self.VAPOR}
+        return self in {self.VAPOR, self.MIDNIGHT, self.FIESTA}
 
 
 vapor = Theme.VAPOR

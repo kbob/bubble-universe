@@ -5,16 +5,17 @@
 * &#x2705; M and N independent
 * &#x2705; reimplement in Python and wgpu-py
 * &#x2705; restructure wgpu initialization as a rendergraph
-* &#x2705; ~~image output and~~ video output
+* &#x2705; image output and video output
   - &#x2705; wgpu-py + numpy + PyAV
 * postprocessing
   - &#x2705; HDR + tone mapping
   - &#x2705; bloom
   - lens flare
-  - trails
+  - &#x2705; trails
+    + diffuse trails
 * colors
   - classic RGB
-  - HSV colors
+  - ~~HSV colors~~
   - animated colormap
   - color/gradient the background outside the circle
   - color schemes
@@ -22,6 +23,7 @@
     + midnight
     + fiesta
     + Easter
+    + BlackWatch
 * MSAA?
 * 3D
   - perspective camera

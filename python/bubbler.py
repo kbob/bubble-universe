@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from colors import ColormapPass
+from colors import ColormapPass, Theme
+from compositor import CompositorPass
 from constants import *
 from copier import CopyPass
 from drawer import DrawingPass
@@ -12,10 +13,12 @@ from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
 from resources import StorageBuffer, Texture
 from tone_mapper import ToneMapPass
+from trailer import TrailerSubgraph
 from wgsl_types import *
 
 
 class Bubbler(ParameterizedMixIn):
+
 
     @dataclass
     class Parameters:
@@ -25,6 +28,10 @@ class Bubbler(ParameterizedMixIn):
         speed: float = Defaults.SPEED
         r: float = Defaults.R
         particle_size: float = Defaults.PARTICLE_SIZE
+        trails: float = Defaults.TRAILS
+        trails_blur: float = Defaults.TRAILS_BLUR
+        bloom_amount: float = Defaults.BLOOM_AMOUNT
+        bloom_size: float = Defaults.BLOOM_SIZE
 
         def calc_dt(self, fps):
             return self.speed / fps
@@ -36,6 +43,7 @@ class Bubbler(ParameterizedMixIn):
         self._last_cmap_size = None
         self._last_render_size = None
         self._theme_ramp = [0] # push initial blend amount
+        self._theme = Theme(Defaults.THEME)
 
 
     def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
@@ -68,25 +76,61 @@ class Bubbler(ParameterizedMixIn):
             shape=(*cmap_size, 4),
             renderable=True,
         )
+        self.background_A = Texture(
+            name='background A',
+            format='rgba8unorm',
+            shape=(*render_size, 4),
+            renderable=True,
+        )
+        self.background_B = Texture(
+            name='background B',
+            format='rgba8unorm',
+            shape=(*render_size, 4),
+            renderable=True,
+        )
+        self.background_image = Texture(
+            name='background',
+            format='rgba8unorm',
+            shape=(*render_size, 4),
+            renderable=True,
+        )
         self.uvs = StorageBuffer(
             name='uvs',
             type_=vec2f,
             shape=(MAX_SEQ_COUNT, MAX_SEQ_LENGTH),
         )
         if self._use_HDR:
-            self.HDR_image = Texture(
-                name='HDR image pre-bloom',
+            # self.background_image = Texture(
+            #     name='background',
+            #     format=HDR_PIXEL_FORMAT,
+            #     shape=(*render_size, 4),
+            #     renderable=True,
+            # )
+            self.trails_image = Texture(
+                name='trails',
+                format=HDR_PIXEL_FORMAT,
+                shape=(*render_size, 4),
+                renderable=True,
+            )
+            self.particles_image = Texture(
+                name='particles',
+                format=HDR_PIXEL_FORMAT,
+                shape=(*render_size, 4),
+                renderable=True,
+            )
+            self.composite_image = Texture(
+                name='composite',
                 format=HDR_PIXEL_FORMAT,
                 shape=(*render_size, 4),
                 renderable=True,
             )
             self.bloomed_image = Texture(
-                name='HDR image post-bloom',
+                name='composite post-bloom',
                 format=HDR_PIXEL_FORMAT,
                 shape=(*render_size, 4),
                 renderable=True,
             )
-            drawing_dest = self.HDR_image
+            drawing_dest = self.particles_image
 
         self._last_cmap_size = cmap_size
         self._last_render_size = render_size
@@ -124,20 +168,17 @@ class Bubbler(ParameterizedMixIn):
             ParticleMotionPass()
                 .bind_uvs(self.uvs)
         )
-        MAP_ME = True
-        if MAP_ME:
-            self.drawer = (
-                ColorMappedDrawingPass()
-                    .bind_uvs(self.uvs)
-                    .bind_colormap(self.colormap)
-                    .attach_color_output(drawing_dest)
-            )
-        else:
-            self.drawer = (
-                DrawingPass()
-                    .bind_uvs(self.uvs)
-                    .attach_color_output(drawing_dest)
-            )
+        self.drawer = (
+            ColorMappedDrawingPass()
+                .bind_uvs(self.uvs)
+                .bind_colormap(self.colormap)
+                .attach_color_output(drawing_dest)
+        )
+        # self.drawer = (
+        #     DrawingPass()
+        #         .bind_uvs(self.uvs)
+        #         .attach_color_output(drawing_dest)
+        # )
         passes = [
             self.colors_A,
             self.colors_B,
@@ -147,9 +188,21 @@ class Bubbler(ParameterizedMixIn):
         ]
 
         if self._use_HDR:
+            self.compositor = (
+                CompositorPass()
+                    .bind_background(self.background_image)
+                    .bind_trails(self.trails_image)
+                    .bind_particles(self.particles_image)
+                    .attach_output(self.composite_image)
+            )
+            self.trailer = (
+                TrailerSubgraph()
+                    .bind_particles(self.particles_image)
+                    .attach_trails(self.trails_image)
+            )
             self.bloomer = (
                 BloomSubgraph()
-                    .bind_input(self.HDR_image)
+                    .bind_input(self.composite_image)
                     .attach_output(self.bloomed_image)
             )
             self.mapper = (
@@ -158,6 +211,8 @@ class Bubbler(ParameterizedMixIn):
                     .attach_output(image_dest)
             )
             passes += [
+                self.compositor,
+                self.trailer,
                 self.bloomer,
                 self.mapper,
             ]
@@ -184,9 +239,14 @@ class Bubbler(ParameterizedMixIn):
             mix_amount = self._theme_ramp.pop()
             self.color_mixer.update_parameters(enabled=True, amount=mix_amount)
         else:
-            self.color_mixer.update_parameters(enabled=False)
+            self.color_mixer.update_parameters(
+                enabled=self._theme.colors_animated,
+            )
 
-        self._active_colors.update_parameters(
+        self.colors_A.update_parameters(
+            t=self._time,
+        )
+        self.colors_B.update_parameters(
             t=self._time,
         )
         self.particles.update_parameters(
@@ -199,6 +259,14 @@ class Bubbler(ParameterizedMixIn):
             seq_count=self._parameters.seq_count,
             seq_length=self._parameters.seq_length,
             particle_size=self._parameters.particle_size,
+        )
+        self.trailer.update_parameters(
+            amount=self._parameters.trails,
+            blur=self._parameters.trails_blur,
+        )
+        self.bloomer.update_parameters(
+            bloom_amount=self._parameters.bloom_amount,
+            bloom_size=self._parameters.bloom_size,
         )
 
         # Set intermediate textures' sizes
@@ -216,13 +284,18 @@ class Bubbler(ParameterizedMixIn):
 
             # Resize textures
             if self._use_HDR:
-                self.HDR_image.resize(self.device, render_size)
+                self.background_image.resize(self.device, render_size)
+                self.trails_image.resize(self.device, render_size)
+                self.particles_image.resize(self.device, render_size)
+                self.composite_image.resize(self.device, render_size)
                 self.bloomed_image.resize(self.device, render_size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, render_size)
 
             # Resize passes
             if self._use_HDR:
+                self.trailer.resize(self.device, render_size)
+                self.compositor.resize(self.device, render_size)
                 self.bloomer.resize(self.device, render_size)
                 self.mapper.resize(self.device, render_size)
             if self._is_multi_output:
@@ -243,6 +316,7 @@ class Bubbler(ParameterizedMixIn):
             _smoothstep(0, frames, i)
             for i in range(frames + 1)
         ]
+        self._theme = theme
 
         if self._active_colors == self.colors_A:
             self.colors_B.update_parameters(theme=theme)

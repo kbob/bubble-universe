@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-import wgpu
 from wgsl_types import *
 
 from parameterized import ParameterizedMixIn

@@ -70,23 +70,32 @@ def run(args):
     # Define the main loop
     frame_num = 0
 
-    fn2 = 0
-    cycle_frame_count = round(tau / Defaults.SPEED * args.fps)
-    theme_count = len(list(Theme))
-    theme_frame_count = cycle_frame_count // theme_count
+    CYCLE_THEMES = False
+    if CYCLE_THEMES:
+        from itertools import cycle
+        from math import isfinite
 
-    from itertools import cycle
-    theme_rotor = cycle(Theme)
-    next(theme_rotor) # skip Classic
+        fn2 = 0
+        cycle_frame_count = round(tau / Defaults.SPEED * args.fps)
+        if isfinite(duration):
+            theme_count = len(list(Theme))
+            theme_frame_count = cycle_frame_count // theme_count
+        else:
+            theme_frame_count = args.fps * 3
+
+        theme_rotor = cycle(Theme)
+        next(theme_rotor) # skip Classic
+
 
     def draw_frame():
 
-        nonlocal fn2
-        fn2 += 1
-        if fn2 == theme_frame_count:
-            new_theme = next(theme_rotor)
-            bubbler.change_theme(new_theme, frames=40)
-            fn2 = 0
+        if CYCLE_THEMES:
+            nonlocal fn2
+            fn2 += 1
+            if fn2 == theme_frame_count:
+                new_theme = next(theme_rotor)
+                bubbler.change_theme(new_theme, frames=40)
+                fn2 = 0
 
         bubbler.draw_frame()
 

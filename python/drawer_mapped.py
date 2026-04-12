@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-# import wgpu
-
 from constants import *
 from passes import Access, Attachment, Binding, BlendMode, RenderPass
 from parameterized import ParameterizedMixIn

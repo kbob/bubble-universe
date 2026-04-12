@@ -1,7 +1,5 @@
 from dataclasses import dataclass
 
-import wgpu
-
 from constants import *
 from copier import CopyPass
 from parameterized import ParameterizedMixIn
@@ -179,12 +177,17 @@ class BloomSubgraph(Subgraph, ParameterizedMixIn):
         # Upsample
 
         for (i, up) in enumerate(self.upsamplers):
+            up.update_parameters(bloom_size=self._parameters.bloom_size)
             up.execute(device, encoder)
             if rotor == i + 1 + BLOOM_MIP_LEVELS:
                 return short_return(self.mip_textures[BLOOM_MIP_LEVELS - i - 2])
 
         # Final upsample and mix
 
+        self.upsample_mixer.update_parameters(
+            bloom_amount=self._parameters.bloom_amount,
+            bloom_size=self._parameters.bloom_size,
+        )
         self.upsample_mixer.execute(device, encoder)
 
 

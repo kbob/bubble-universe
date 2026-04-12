@@ -14,12 +14,14 @@ BLOOM_MIP_LEVELS = 5
 
 class Defaults:
     SEQ_COUNT = 200
-    SEQ_LENGTH = 200
+    SEQ_LENGTH = 100
     SPEED = tau / 12.5          # radians/sec
     R = tau / 235               # radians
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
     CANVAS_SIZE = (675, 540)
     VIDEO_FILE = 'temp.mp4'
+    TRAILS = 0.4
+    TRAILS_BLUR = 0
     BLOOM_AMOUNT = 0.03 / PARTICLE_SIZE
     BLOOM_SIZE = 0.005
     THEME = 'Classic'
