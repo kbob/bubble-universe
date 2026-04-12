@@ -89,6 +89,21 @@ def run(args):
 
     def draw_frame():
 
+        nonlocal frame_num
+
+        # tdf = (frame_num % 1000) / 1000
+        # tdf = 1
+        # bubbler.update_parameters(
+        #     # r=1,
+        #     seq_count=80,
+        #     seq_length=50,
+        #     # particle_size=0.707,
+        #     particle_size=1.414,
+        #     trail_persistence=0.94,
+        #     trail_diffusion=0.9,
+        #     bloom_amount=0.0,
+        # )
+
         if CYCLE_THEMES:
             nonlocal fn2
             fn2 += 1
@@ -107,7 +122,6 @@ def run(args):
             )
             video_out.append_frame(image_data)
 
-            nonlocal frame_num
             frame_num += 1
             if frame_num == duration:
                 loop.stop()

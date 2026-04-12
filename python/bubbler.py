@@ -28,8 +28,8 @@ class Bubbler(ParameterizedMixIn):
         speed: float = Defaults.SPEED
         r: float = Defaults.R
         particle_size: float = Defaults.PARTICLE_SIZE
-        trails: float = Defaults.TRAILS
-        trails_blur: float = Defaults.TRAILS_BLUR
+        trail_persistence: float = Defaults.TRAIL_PERSISTENCE
+        trail_diffusion: float = Defaults.TRAIL_DIFFUSION
         bloom_amount: float = Defaults.BLOOM_AMOUNT
         bloom_size: float = Defaults.BLOOM_SIZE
 
@@ -261,8 +261,8 @@ class Bubbler(ParameterizedMixIn):
             particle_size=self._parameters.particle_size,
         )
         self.trailer.update_parameters(
-            amount=self._parameters.trails,
-            blur=self._parameters.trails_blur,
+            persistence=self._parameters.trail_persistence,
+            diffusion=self._parameters.trail_diffusion,
         )
         self.bloomer.update_parameters(
             bloom_amount=self._parameters.bloom_amount,
@@ -276,7 +276,15 @@ class Bubbler(ParameterizedMixIn):
             self._last_cmap_size = cmap_size
 
             # Resize colormap
+            self.colormap_A.resize(self.device, cmap_size)
+            self.colormap_B.resize(self.device, cmap_size)
             self.colormap.resize(self.device, cmap_size)
+
+            # Resize passes
+            # self.colors_A.resize(self.device, cmap_size)
+            # self.colors_B.resize(self.device, cmap_size)
+            self.color_mixer.resize(self.device, cmap_size)
+            self.drawer.resize_colormap(self.device, cmap_size)
 
         render_size = self.resize_controller.current_size()
         if self._last_render_size != render_size:

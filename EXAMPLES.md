@@ -15,6 +15,6 @@ Single particle per sequence
 
     At frame 180:
     fade colormap to Fiesta
-    particle size = 1
-    trails = 0.9
+    particle_size = 1
+    trail_persistence = 0.9
     bloom_amount = 0.07

@@ -20,8 +20,8 @@ class Defaults:
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
     CANVAS_SIZE = (675, 540)
     VIDEO_FILE = 'temp.mp4'
-    TRAILS = 0.4
-    TRAILS_BLUR = 0
+    TRAIL_PERSISTENCE = 0.4
+    TRAIL_DIFFUSION = 0
     BLOOM_AMOUNT = 0.03 / PARTICLE_SIZE
     BLOOM_SIZE = 0.005
     THEME = 'Classic'

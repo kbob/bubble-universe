@@ -127,5 +127,3 @@ class ColormapPass(RenderPass, ParameterizedMixIn):
 
         vertex_count = 3
         self.encode_render_pass_draw(encoder, vertex_count)
-
-

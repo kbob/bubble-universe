@@ -118,3 +118,6 @@ class ColorMappedDrawingPass(RenderPass, ParameterizedMixIn):
             6 * self._parameters.seq_count * self._parameters.seq_length
         )
         self.encode_render_pass_draw(encoder, vertex_count)
+
+    def resize_colormap(self, device, size):
+        self.rebind_group(device, 'colormap')
