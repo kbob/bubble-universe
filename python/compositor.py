@@ -43,10 +43,21 @@ shader_source = '''
         let trails = textureSample(trails_tex, all_sampler, in.texcoord);
         let particles = textureSample(particles_tex, all_sampler, in.texcoord);
 
-        var color = bg;
-        color += trails;
-        color += particles;
+        var rgb = bg.rgb;
 
+        let ta = clamp(trails.a, 0f, 1f);
+        rgb = trails.rgb + (1f - ta) * rgb;
+
+        let pa = clamp(particles.a, 0f, 1f);
+        rgb = particles.rgb + (1f - pa) * rgb;
+
+        // // ---
+        // rgb = bg.rgb;
+        // let pt = particles + trails;
+        // let pta = clamp(pt.a, 0f, 1f);
+        // rgb = pt.rgb + (1f - pta) * rgb;
+
+        let color = vec4f(rgb, 1f);
         return color;
     };
 '''

@@ -110,7 +110,7 @@ fn easter_color(in: InterStage) -> vec4f {
 }
 
 fn bone_color(in: InterStage) -> vec4f {
-    let h = 0.1 + 0.2 * in.texcoord.x;
+    let h = 0.1 + 0.15 * in.texcoord.x;
     let s = 0.4 * in.texcoord.y;
     let v = 0.6 + 0.3 * in.texcoord.y;
     let a = 1.0;

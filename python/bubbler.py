@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from backgrounds import BackgroundPass
 from colors import ColormapPass, Theme
 from compositor import CompositorPass
 from constants import *
@@ -54,6 +55,7 @@ class Bubbler(ParameterizedMixIn):
         self._use_HDR = use_HDR
         self.resize_controller = self.outputs[0]
 
+
         # Create resources
 
         cmap_size = (self._parameters.seq_count, self._parameters.seq_length)
@@ -76,13 +78,13 @@ class Bubbler(ParameterizedMixIn):
             shape=(*cmap_size, 4),
             renderable=True,
         )
-        self.background_A = Texture(
+        self.background_image_A = Texture(
             name='background A',
             format='rgba8unorm',
             shape=(*render_size, 4),
             renderable=True,
         )
-        self.background_B = Texture(
+        self.background_image_B = Texture(
             name='background B',
             format='rgba8unorm',
             shape=(*render_size, 4),
@@ -147,6 +149,7 @@ class Bubbler(ParameterizedMixIn):
         if not self._use_HDR:
             drawing_dest = image_dest
 
+
         # Create compute and render passes
 
         self.colors_A = (
@@ -159,10 +162,24 @@ class Bubbler(ParameterizedMixIn):
         )
         self._active_colors = self.colors_A
         self.color_mixer = (
-            MixerPass()
+            MixerPass('color mixer')
                 .bind_input_A(self.colormap_A)
                 .bind_input_B(self.colormap_B)
                 .attach_output(self.colormap)
+        )
+        self.background_A = (
+            BackgroundPass('backgrounds A')
+                .attach_output(self.background_image_A)
+        )
+        self.background_B = (
+            BackgroundPass('backgrounds B')
+                .attach_output(self.background_image_B)
+        )
+        self.background_mixer = (
+            MixerPass('background mixer')
+                .bind_input_A(self.background_image_A)
+                .bind_input_B(self.background_image_B)
+                .attach_output(self.background_image)
         )
         self.particles = (
             ParticleMotionPass()
@@ -183,6 +200,9 @@ class Bubbler(ParameterizedMixIn):
             self.colors_A,
             self.colors_B,
             self.color_mixer,
+            self.background_A,
+            self.background_B,
+            self.background_mixer,
             self.particles,
             self.drawer,
         ]
@@ -226,6 +246,7 @@ class Bubbler(ParameterizedMixIn):
             ]
             passes += self.copiers
 
+
         # create render graph
 
         self.rendergraph = RenderGraph(device, passes)
@@ -237,16 +258,32 @@ class Bubbler(ParameterizedMixIn):
 
         if self._theme_ramp:
             mix_amount = self._theme_ramp.pop()
-            self.color_mixer.update_parameters(enabled=True, amount=mix_amount)
+            self.color_mixer.update_parameters(
+                enabled=True,
+                amount=mix_amount,
+            )
+            self.background_mixer.update_parameters(
+                enabled=True,
+                amount=mix_amount,
+            )
         else:
             self.color_mixer.update_parameters(
                 enabled=self._theme.colors_animated,
+            )
+            self.background_mixer.update_parameters(
+                enabled=self._theme.background_animated,
             )
 
         self.colors_A.update_parameters(
             t=self._time,
         )
         self.colors_B.update_parameters(
+            t=self._time,
+        )
+        self.background_A.update_parameters(
+            t=self._time,
+        )
+        self.background_B.update_parameters(
             t=self._time,
         )
         self.particles.update_parameters(
@@ -281,10 +318,11 @@ class Bubbler(ParameterizedMixIn):
             self.colormap.resize(self.device, cmap_size)
 
             # Resize passes
-            # self.colors_A.resize(self.device, cmap_size)
-            # self.colors_B.resize(self.device, cmap_size)
             self.color_mixer.resize(self.device, cmap_size)
             self.drawer.resize_colormap(self.device, cmap_size)
+            self.colors_A.enable()
+            self.colors_B.enable()
+            self.color_mixer.update_parameters(enabled=True)
 
         render_size = self.resize_controller.current_size()
         if self._last_render_size != render_size:
@@ -292,6 +330,8 @@ class Bubbler(ParameterizedMixIn):
 
             # Resize textures
             if self._use_HDR:
+                self.background_image_A.resize(self.device, render_size)
+                self.background_image_B.resize(self.device, render_size)
                 self.background_image.resize(self.device, render_size)
                 self.trails_image.resize(self.device, render_size)
                 self.particles_image.resize(self.device, render_size)
@@ -301,6 +341,10 @@ class Bubbler(ParameterizedMixIn):
                 self.image_texture.resize(self.device, render_size)
 
             # Resize passes
+            self.background_mixer.resize(self.device, render_size)
+            self.background_A.enable()
+            self.background_B.enable()
+            self.background_mixer.update_parameters(enabled=True)
             if self._use_HDR:
                 self.trailer.resize(self.device, render_size)
                 self.compositor.resize(self.device, render_size)
@@ -320,6 +364,7 @@ class Bubbler(ParameterizedMixIn):
 
 
     def change_theme(self, theme, frames=1):
+        print(f'change theme -> {theme!s}')
         ramp = [
             _smoothstep(0, frames, i)
             for i in range(frames + 1)
@@ -328,10 +373,12 @@ class Bubbler(ParameterizedMixIn):
 
         if self._active_colors == self.colors_A:
             self.colors_B.update_parameters(theme=theme)
+            self.background_B.update_parameters(theme=theme)
             self._theme_ramp.extend(ramp[:0:-1])
             self._active_colors = self.colors_B
         else:
             self.colors_A.update_parameters(theme=theme)
+            self.background_A.update_parameters(theme=theme)
             self._theme_ramp.extend(ramp[1:])
             self._active_colors = self.colors_A
 

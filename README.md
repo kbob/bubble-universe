@@ -72,3 +72,12 @@ As above, you need to use the Python venv.
     $ source venv/bin/activate
     ((venv) ) $ python python/bub.py
 
+
+# License
+
+This software is licensed under the GNU GPL Version 3, as found in
+the LICENSE file.
+
+Portions are copyright 2021 Stefan Gustavson and Ian McEwan under
+the MIT license.  That license is available here.
+https://github.com/stegu/psrdnoise/

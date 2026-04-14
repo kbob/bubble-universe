@@ -55,7 +55,7 @@ shader_source = '''
         let delta = vec2f(U.blur_sample_width[0], 0.0);
 
         // Samples
-        let ts = textureSample(in_trails, image_sampler, in.texcoord).rgb;
+        let ts = textureSample(in_trails, image_sampler, in.texcoord);
         let ds = blur_1d(in.texcoord, delta);
 
         // Weighted samples
@@ -65,7 +65,7 @@ shader_source = '''
         // Composite
         let color = U.persistence * (trails + diffused);
 
-        return vec4f(color, 1.0);
+        return color;
     }
 
     @fragment fn pass2_fragment_shader(
@@ -77,9 +77,9 @@ shader_source = '''
         let delta = vec2f(0.0, U.blur_sample_width[1]);
 
         // Samples
-        let ts = textureSample(in_trails, image_sampler, in.texcoord).rgb;
+        let ts = textureSample(in_trails, image_sampler, in.texcoord);
         let ds = blur_1d(in.texcoord, delta);
-        let ps = textureSample(in_particles, image_sampler, in.texcoord).rgb;
+        let ps = textureSample(in_particles, image_sampler, in.texcoord);
 
         // Weighted samples
         let trails = (1.0 - U.diffusion) * ts;
@@ -89,13 +89,13 @@ shader_source = '''
         // Composite
         let color = U.persistence * (trails + diffused + particles);
 
-        return vec4f(color, 1.0);
+        return vec4f(color.rgb, clamp(color.a, 0f, 1f));
     };
 
-    fn blur_1d(coord: vec2f, delta: vec2f) -> vec3f {
-        let a = textureSample(in_trails, blur_sampler, coord - delta).rgb;
-        let b = textureSample(in_trails, image_sampler, coord).rgb;
-        let c = textureSample(in_trails, blur_sampler, coord + delta).rgb;
+    fn blur_1d(coord: vec2f, delta: vec2f) -> vec4f {
+        let a = textureSample(in_trails, blur_sampler, coord - delta);
+        let b = textureSample(in_trails, image_sampler, coord);
+        let c = textureSample(in_trails, blur_sampler, coord + delta);
 
         return
             0.3125 * (a + c) +
@@ -276,11 +276,6 @@ class _T1Pass(RenderPass, ParameterizedMixIn):
 
         vertex_count = 3
         self.encode_render_pass_draw(encoder, vertex_count)
-
-
-
-
-# _T1Pass = CopyPass
 
 
 class _T2Pass(RenderPass, ParameterizedMixIn):

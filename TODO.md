@@ -49,6 +49,7 @@
 * &#x2705; Bubbler and BubblerHDR need to be merged.
 * Mixer can reuse one sampler.
 * Uniforms can be refactored.
+* trailer/blur_1d() can be changed to remove duplicate texture lookup.
 
 ## Bloom changes
 

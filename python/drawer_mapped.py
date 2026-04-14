@@ -54,6 +54,7 @@ class ColorMappedDrawingPass(RenderPass, ParameterizedMixIn):
                 'color output',
                 self.output,
                 blend=BlendMode(BLEND_MODE),
+                clear_value=(0, 0, 0, 0),
             ),
         ]
 

@@ -1,71 +1,32 @@
+# from colorsys import hsv_to_rgb
 from dataclasses import dataclass
-from enum import StrEnum
+# from enum import StrEnum
 import enum
 
+from colors import Theme
 from constants import *
 from parameterized import ParameterizedMixIn
 from passes import Access, Attachment, Binding, RenderPass
 from wgsl_types import *
 
 
-class Theme(StrEnum):
-    CLASSIC = 'Classic'
-    VAPOR = 'Vapor'
-    MIDNIGHT = 'Midnight'
-    FIESTA = 'Fiesta'
-    EASTER = 'Easter'
-    BONE = 'Bone'
-    OSCOPE = 'Oscilloscope'
-
-    @classmethod
-    def from_int(cls, n):
-        return list(cls)[n]
-
-    def __int__(self):
-        return list(type(self)).index(self)
-
-    @enum.property
-    def colors_animated(self):
-        return False            # maybe someday
-    
-    @enum.property
-    def background_animated(self):
-        return self in {self.VAPOR, self.MIDNIGHT, self.FIESTA}
-
-
-vapor = Theme.VAPOR
-# print(f'{vapor = }')
-# print(f'{int(vapor) = }')
-# print(f'{Theme.from_int(1) = }')
-# print(f'{Theme('Vapor') = }')
-# print(f'{Theme(f'{OE}stre') = }')
-assert vapor == Theme.VAPOR
-assert int(vapor) == 1
-assert Theme.from_int(1) == vapor
-assert Theme('Vapor') == vapor
-assert not vapor.colors_animated
-assert vapor.background_animated
-
-class ColormapPass(RenderPass, ParameterizedMixIn):
+class BackgroundPass(RenderPass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:
-        seq_count: u32 = Defaults.SEQ_COUNT
-        seq_length: u32 = Defaults.SEQ_LENGTH
         theme: Theme = Theme(Defaults.THEME)
         t: float = 0
 
     class _Uniforms(Uniforms):
-        seq_count: u32 = Defaults.SEQ_COUNT
-        seq_length: u32 = Defaults.SEQ_LENGTH
         theme: u32 = int(Theme(Defaults.THEME))
         t: f32 = 0
+        viewport_size: vec2u = Defaults.CANVAS_SIZE
 
-    def __init__(self, name='colors'):
+    def __init__(self, name='background'):
         super().__init__(name)
-        self.colormap = None
+        self.output = None
         self._enabled = True
-        self.shader_file = 'colors.wgsl'
+        self.shader_file = 'backgrounds.wgsl'
         self.shader = self.read_shader(self.shader_file)
 
     def enable(self):
@@ -77,19 +38,19 @@ class ColormapPass(RenderPass, ParameterizedMixIn):
         super().update_parameters(**kwargs)
 
     def resources(self):
-        assert self.colormap is not None
+        assert self.output is not None
         assert self.uniform_buffer is not None
         return [
             Binding((0, 0), 'uniforms', self.uniform_buffer, Access.RO),
-            Attachment('colormap_output', self.colormap),
+            Attachment('output', self.output),
         ]
 
-    def attach_colormap_output(self, colormap):
-        self.colormap = colormap
+    def attach_output(self, tex):
+        self.output = tex
         return self
 
     def instantiate(self, device):
-        assert self.colormap is not None
+        assert self.output is not None
         assert self.uniform_buffer is not None
 
         shader_module = device.create_shader_module(
@@ -105,21 +66,21 @@ class ColormapPass(RenderPass, ParameterizedMixIn):
 
         if not self._enabled:
             return
-        if not self._parameters.theme.colors_animated:
+        if not self._parameters.theme.background_animated:
             self._enabled = False
 
         # Get the output texture.
-        current_texture = self.colormap.current_texture()
-        current_view = self.colormap.current_view()
+        current_texture = self.output.current_texture()
+        current_view = self.output.current_view()
+        view_size = self.output.current_size()
 
         # Update the output view
         self.pass_descriptor.color_attachments[0].view = current_view
 
         uniforms = self._Uniforms(
-            seq_count=self._parameters.seq_count,
-            seq_length=self._parameters.seq_length,
             theme=int(self._parameters.theme),
             t=self._parameters.t,
+            viewport_size=view_size,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())
 
