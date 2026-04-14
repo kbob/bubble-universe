@@ -71,9 +71,9 @@ struct InterStage {
     if U.theme == 2u {
         return midnight_background(in);
     }
-    // if U.theme == 1u {
-    //     return vapor_background(in);
-    // }
+    if U.theme == 1u {
+        return vapor_background(in);
+    }
     // Use classic for 0u and any unknown themes too.
     return classic_background(in);
 }
@@ -91,11 +91,87 @@ fn classic_background(in: InterStage) -> vec4f {
 // Vapor Theme
 
 fn vapor_background(in: InterStage) -> vec4f {
-    let h = 0.6 + 0.3 * in.texcoord.x;
-    let s = 0.8;
-    let v = 0.5 + min(0.5, in.texcoord.y) - 0.5 * in.texcoord.x;
-    let a = 1.0;
-    return vec4f(hsv_to_rgb(h, s, v), a);
+
+    let U = uniforms;
+
+    const PINK = vec3f(1f, 0f, 0.75);
+    const LIGHT_BLUE = vec3f(0.3, 0.5, 1f);
+    const DARK_BLUE = vec3f(0.02, 0f, 0.10);
+    const SILVER = vec3f(0.5);
+
+    const HORIZON_Y = 0.2;
+    const HORIZON_THICKNESS = 0.01;
+    const FLOOR_FADE_H = 0.1;
+
+    let x = in.xy.x;
+    let y = in.xy.y;
+
+    // What we're doing
+    // in bubble: darker dark blue
+    // around bubble: pink glow
+    // sky: dark blue gradient fade to lighter blue to pink
+    // horizon line: light blue
+    // floor:
+    //     dark blue
+    //     light blue hlines
+    //     light blue vlines
+    //     light blue glow around lines
+    //     distance fade to silver
+
+    var color: vec3f;
+    if y > HORIZON_Y {
+        // sky
+        let sky_gradient = min(1f, y - HORIZON_Y);
+        color = mix(5f * DARK_BLUE, DARK_BLUE, sky_gradient);
+        // sunset (pink)
+        let sunset_mix = pow(min(1f, (y - HORIZON_Y) * 4f), 0.5);
+        color = mix(PINK, 1.5 * color, sunset_mix);
+    } else if (y > HORIZON_Y - HORIZON_THICKNESS) {
+        // horizon
+        color = LIGHT_BLUE;
+    } else {
+        // floor
+        color = DARK_BLUE;
+
+        // grid
+        // perspective coord
+        let py = y - HORIZON_Y;
+        let p = vec3f(x / py, 0, 3f / py - 15f * U.t);
+
+        // vlines
+        let vl_dist = abs(p.x - round(p.x));
+        let vline_mix =
+            0.94 * smoothstep(0.005, 0, vl_dist)
+            + 0.06 * smoothstep(0.15, 0, vl_dist);
+        color = mix(color, LIGHT_BLUE, vline_mix);
+
+        // hlines
+        let hl_dist = abs(p.z - round(p.z));
+        let hl_thickness = max(0.2 * (py + 1), 0.01);
+        let hline_mix =
+            0.94 * smoothstep(hl_thickness, 0, hl_dist)
+            + 0.06 * smoothstep(0.15, 0, hl_dist);
+        color = mix(color, LIGHT_BLUE, hline_mix);
+
+        // floor distance fade
+        let fade_y = (y + FLOOR_FADE_H) / HORIZON_Y;
+        let floor_fade = pow(clamp(fade_y, 0f, 1f), 1.5);
+        color = mix(color, SILVER, floor_fade);
+    }
+
+    let r2 = dot(in.xy, in.xy);
+    if r2 < 1f {
+        // in the bubble
+        color = 0.3 * DARK_BLUE;
+    } else {
+        // apply bubble glow.
+        // bubble glow is oval.
+        let glow_size = 0.2 + 0.3 * x * x;
+        let bubble_glow = 0.3 * smoothstep(1 + glow_size, 1 - glow_size, r2);
+        color = mix(color, PINK, bubble_glow);
+    }
+
+    return vec4f(color, 1f);
 }
 
 
