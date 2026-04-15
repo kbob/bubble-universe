@@ -12,17 +12,17 @@
   - &#x2705; bloom
   - lens flare
   - &#x2705; trails
-    + diffuse trails
+    + &#x2705; diffuse trails
 * colors
-  - classic RGB
+  - &#x2705; classic RGB
   - ~~HSV colors~~
   - animated colormap
-  - color/gradient the background outside the circle
+  - &#x2705; color/gradient the background outside the circle
   - color schemes
-    + vaporwave
-    + midnight
-    + fiesta
-    + Easter
+    + &#x2705; vaporwave
+    + &#x2705; midnight
+    + &#x2705; fiesta
+    + &#x2705; Easter
     + BlackWatch
 * MSAA?
 * 3D

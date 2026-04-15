@@ -1,6 +1,6 @@
-const INV_PHI: f32 = (sqrt(5.0) - 1.0) / 2.0;
+const INV_PHI: f32 = (sqrt(5f) - 1f) / 2f;
 const BORDER: f32 = 0.1;        // duplicated from constants.py
-const TAU: f32 = radians(360);
+const TAU: f32 = radians(360f);
 
 struct Uniforms {
     theme: u32,
@@ -23,9 +23,9 @@ struct InterStage {
     let U = uniforms;
 
     var corners = array<vec2f, 3>(
-        vec2f(-1.0, -1.0),
-        vec2f(-1.0,  3.0),
-        vec2f( 3.0, -1.0),
+        vec2f(-1f, -1f),
+        vec2f(-1f,  3f),
+        vec2f( 3f, -1f),
     );
 
     let w = f32(U.viewport_size[0]);
@@ -33,10 +33,10 @@ struct InterStage {
     var scale: vec2f;
     if h > w {
         // portrait
-        scale = vec2f(1.0, h / w);
+        scale = vec2f(1f, h / w);
     } else {
         // landscape
-        scale = vec2f(w / h, 1.0);
+        scale = vec2f(w / h, 1f);
     }
     scale /= 0.9;
 
@@ -44,7 +44,7 @@ struct InterStage {
     let xy = pos * scale;
 
     var out: InterStage;
-    out.position = vec4f(pos, 0.0, 1.0);
+    out.position = vec4f(pos, 0f, 1f);
     out.texcoord = pos * vec2f(0.5, -0.5) + vec2f(0.5);
     out.xy = xy;
     return out;
@@ -136,21 +136,21 @@ fn vapor_background(in: InterStage) -> vec4f {
         // grid
         // perspective coord
         let py = y - HORIZON_Y;
-        let p = vec3f(x / py, 0, 3f / py - 15f * U.t);
+        let p = vec3f(x / py, 0f, 3f / py - 15f * U.t);
 
         // vlines
         let vl_dist = abs(p.x - round(p.x));
         let vline_mix =
-            0.94 * smoothstep(0.005, 0, vl_dist)
-            + 0.06 * smoothstep(0.15, 0, vl_dist);
+            0.94 * smoothstep(0.005, 0f, vl_dist)
+            + 0.06 * smoothstep(0.15, 0f, vl_dist);
         color = mix(color, LIGHT_BLUE, vline_mix);
 
         // hlines
         let hl_dist = abs(p.z - round(p.z));
-        let hl_thickness = max(0.2 * (py + 1), 0.01);
+        let hl_thickness = max(0.2 * (py + 1f), 0.01);
         let hline_mix =
-            0.94 * smoothstep(hl_thickness, 0, hl_dist)
-            + 0.06 * smoothstep(0.15, 0, hl_dist);
+            0.94 * smoothstep(hl_thickness, 0f, hl_dist)
+            + 0.06 * smoothstep(0.15, 0f, hl_dist);
         color = mix(color, LIGHT_BLUE, hline_mix);
 
         // floor distance fade
@@ -167,7 +167,7 @@ fn vapor_background(in: InterStage) -> vec4f {
         // apply bubble glow.
         // bubble glow is oval.
         let glow_size = 0.2 + 0.3 * x * x;
-        let bubble_glow = 0.3 * smoothstep(1 + glow_size, 1 - glow_size, r2);
+        let bubble_glow = 0.3 * smoothstep(1f + glow_size, 1f - glow_size, r2);
         color = mix(color, PINK, bubble_glow);
     }
 
@@ -199,38 +199,36 @@ fn midnight_background(in: InterStage) -> vec4f {
     let alpha = U.t;
     let n_base = (
         0.5 * srnoise2(pos, 2f * alpha)
-        + 0.25 * srnoise2(2.0 * pos, 2f * alpha)
-        + 0.125 * srnoise2(4.0 * pos, 4f * alpha)
+        + 0.25 * srnoise2(2f * pos, 2f * alpha)
+        + 0.125 * srnoise2(4f * pos, 4f * alpha)
     );
     let n_in = n_base - 0.1;
     let n_out = (
         n_base
-        + 0.0625 * srnoise2(8.0 * pos, 8f * alpha)
-        + 0.04 * srnoise2(16.0 * pos, 16f * alpha)
+        + 0.0625 * srnoise2(8f * pos, 8f * alpha)
+        + 0.04 * srnoise2(16f * pos, 16f * alpha)
     );
 
     // Condition the noise.  Give it black areas, then brighten it.
     const MIST_DARKEN = 0.15;
     const MIST_GAIN = 2f;
     let cn_in = MIST_GAIN * max(0f, n_in - MIST_DARKEN);
-    let cn_out = MIST_GAIN * max(0.0, n_out - MIST_DARKEN);
+    let cn_out = MIST_GAIN * max(0f, n_out - MIST_DARKEN);
 
     // Color the mist.
     // Inside the bubble, it's pure blue.
     // Outside, it's blue, and the wisps are tinged purple.
-    let c_in = vec3f(0.0, 0.0, 0.1 * cn_in);
-    let c_out = vec3f(0.03 * (cn_out - cn_in), 0.0, 0.2 * cn_out);
+    let c_in = vec3f(0f, 0f, 0.1 * cn_in);
+    let c_out = vec3f(0.03 * (cn_out - cn_in), 0f, 0.2 * cn_out);
 
     let color = mix(c_in, c_out, circle_mix);
-    return vec4f(color, 1.0);
+    return vec4f(color, 1f);
 }
 
 
 // //  //   //    //     //      //       //        //         //
 // Fiesta Theme
 
-const FIESTA_STREAMER_COUNT: f32 = 4.5;
-const FIESTA_FLAG_COUNT: f32 = 5;
 
 fn rfract(x: f32) -> f32 {
     // rounded fractional part
@@ -241,38 +239,53 @@ fn fiesta_background(in: InterStage) -> vec4f {
 
     let U = uniforms;
 
-    const K = 0.8f;
+    const STRING_COUNT: f32 = 4.5;
+    const FLAG_COUNT: f32 = 5f;
+    const DROOP_K = 0.8;
 
     let x = in.xy.x;
     let y = in.xy.y;
 
-    let sy = y / 2.2 * f32(FIESTA_STREAMER_COUNT);
+    // iy divides the viewport into horizontal bands, one per flag string.
+    // fy goes from 0..1 in each band.
+    let sy = y / 2.2 * f32(STRING_COUNT);
     let iy = floor(sy);
     let fy = sy - iy;
 
+    // sx shifts and scales x in each horizontal band.
+    // ix divides the bands into flag segments (arcs).
+    // fx goes from 0..1 in each segment.
     let sx = 0.55 * (x + INV_PHI * iy);
     let ix = round(sx);
     let fx = sx - ix;
 
-    let flag = round(sx * 5f);
+    // flag is a different integer for each flag in a row
+    let flag = round(sx * FLAG_COUNT);
 
+    // iv - a different xy for each flag segment.
+    // noise -- low frequency simplex noise value for each flag segment.
+    // cn (conditioned noise) -- noise scaled to 0.7 .. 1.3 (approx.)
     let iv = vec2f(ix, iy);
-
     let noise =
         srnoise2(iv, U.t)
         + 0.5 * srnoise2(iv * 0.5, 2f * U.t)
         + 0.25 * srnoise2(iv * 0.25, 4f * U.t)
         ;
-    let cn = 1f + 0.3 * (noise - 0.5);  // 0.7 .. 1.3
+    let cn = 1f + 0.3 * (noise - 0.5);
 
-    let droop_y = (cosh(cn * K * 2 * fx) - cosh(cn * K)) + 1;
+    // segment_droop - how far each flag segment droops.
+    // droop_y - y coordinage of the invisible string
+    //           (0 = band bottom, 1 = band top)
+    let segment_droop = cn * DROOP_K;
+    let droop_y = (cosh(2f * fx * segment_droop) - cosh(segment_droop)) + 1f;
 
+    // Is this fragment part of the sky or a flag?
     var in_sky: bool = false;
     if fy > droop_y || fy < droop_y - 0.5 {
         // between flag strings
         in_sky = true;
     }
-    if abs(sx * 5f - flag) > 0.4 {
+    if abs(sx * FLAG_COUNT - flag) > 0.42 {
         // between flags on string
         in_sky = true;
     }
@@ -281,17 +294,20 @@ fn fiesta_background(in: InterStage) -> vec4f {
         in_sky = true;
     } 
 
-    let r2 = dot(in.xy, in.xy);
-    let in_bubble = smoothstep(1.05, 1f, r2);
+    // in_bubble - 1 inside the bubble, 0 outside
+    let in_bubble = smoothstep(1.05, 1f, dot(in.xy, in.xy));
 
-    let h = fract(INV_PHI * (iy + 0.123) * flag);
-    let flag_color = hsv_to_rgb(h, 1f, 1f);
+    // calculate colors
+    // The small constants are to keep the strings from being similar.
+   let flag_hue = fract(INV_PHI * (iy + 0.123) * (flag + 0.456));
+    let flag_color = hsv_to_rgb(flag_hue, 1f, 1f);
     let sky_color = hsv_to_rgb(
-        0.667,
-        mix(0.5f, 1f, 1f - in.texcoord.y),
+        0.667,                  // blue
+        mix(1f, 0.5, in.texcoord.y), // fade pure blue -> light blue
         1f,
     );
 
+    // In the bubble, darken the sky more than the flags.
     var color: vec3f;
     if in_sky {
         color = mix(sky_color, vec3f(0f), 0.9 * in_bubble);
@@ -299,44 +315,8 @@ fn fiesta_background(in: InterStage) -> vec4f {
         color = mix(flag_color, vec3f(0f), 0.8 * in_bubble);
     }
     return vec4f(color, 1f);
-    // var h: f32;
-    // var s: f32 = 1f;
-    // var v: f32 = 1f;
-    // h = fract(INV_PHI * (iy + 0.123));
-    // h = 0;
-    // h = (h + sx + 1) % 1;
-    // h = droop_y;
-    // h = fract(INV_PHI * ((iy + 0.123) * flag));
-
-    // if in_sky {
-    //     h = .667;
-    //     s = mix(0.5f, 1f, 1f - in.texcoord.y);
-    //     v = 1f;
-    // }
-
-    // let r2 = dot(in.xy, in.xy);
-    // let in_bubble = smoothstep(1.05, 1f, r2);
-    // let color = mix(hsv_to_rgb(h, s, v), vec3f(0f), in_bubble);
-    // return vec4f(color, 1f);
-
-    // let s = droop_x + 0.5;
-    // let v: f32 = droop_y - sy;
-
-    // let stagger_x = x + srnoise2(vec2f(iy, 0f), U.t);
-    // let droop_y = y - 0.8 * cosh(fract(stagger_x) - 0.5);
-    // let ydm = divmod_f32(droop_y * f32(STREAMER_COUNT) / 2.2, 1.0);
-    // let i = floor(droop_y * f32(STREAMER_COUNT) / 2f);
-    // let f = droop_y - i;
-    // let h = (INV_PHI * (i + 100));
-    // let s = 1.0;
-    // let v = 1.0;
-    // let a = 1.0;
-    // return vec4f(hsv_to_rgb(h, s, v), a);
 }
 
-fn fiesta_y_to_streamer(y: f32) -> f32 {
-    return floor(y / 2.2 * f32(FIESTA_STREAMER_COUNT));
-}
 
 // //  //   //    //     //      //       //        //         //
 // Easter Theme
@@ -347,10 +327,10 @@ fn easter_background(in: InterStage) -> vec4f {
 
     let blend = smoothstep(0.3, 0.7, in.texcoord.x);
     let grass = smoothstep(0.15, 0.1, 1f - in.texcoord.y);
-    let in_out = smoothstep(0.9, 1.1, dot(in.xy, in.xy));
+    let in_bubble = smoothstep(1.05, 1f, dot(in.xy, in.xy));
 
 
-    let grass_hsv = vec3f(0.333, 1f, 0.3f);
+    let grass_hsv = vec3f(0.333, 1f, 0.3);
 
     var h = mix(0.2, 0.5, blend);
     var s = 0.6;
@@ -360,10 +340,8 @@ fn easter_background(in: InterStage) -> vec4f {
     s = mix(s, grass_hsv.g, grass);
     v = mix(v, grass_hsv.b, grass);
 
-    s = mix(0.5 * s, s, in_out);
-    v = mix(0, v, in_out);
-    let a = 1.0;
-    return vec4f(hsv_to_rgb(h, s, v), a);
+    let color = mix(hsv_to_rgb(h, s, v), vec3f(0f), 0.9 * in_bubble);
+    return vec4f(color, 1f);
 }
 
 
@@ -375,7 +353,7 @@ fn bone_background(in: InterStage) -> vec4f {
     let h = 0.1 + 0.15 * in.texcoord.x;
     let s = 0.4 * in.texcoord.y;
     let v = 0.6 + 0.3 * in.texcoord.y;
-    let a = 1.0;
+    let a = 1f;
     return vec4f(hsv_to_rgb(h, s, v), a);
 }
 
@@ -398,26 +376,26 @@ fn oscope_in_line(x: f32, line: f32) -> f32 {
 fn oscope_background(in: InterStage) -> vec4f {
     let U = uniforms;
     let r2 = dot(in.xy, in.xy);
-    let left_margin: f32 = BORDER * f32(U.viewport_size.x) / 2.0;
-    let top_margin: f32 = BORDER * f32(U.viewport_size.y) / 2.0;
-    let right_margin: f32 = (2.0 - BORDER) * f32(U.viewport_size.x) / 2.0;
-    let bottom_margin: f32 = (2.0 - BORDER) * f32(U.viewport_size.y) / 2.0;
+    let left_margin: f32 = BORDER * f32(U.viewport_size.x) / 2f;
+    let top_margin: f32 = BORDER * f32(U.viewport_size.y) / 2f;
+    let right_margin: f32 = (2f - BORDER) * f32(U.viewport_size.x) / 2f;
+    let bottom_margin: f32 = (2f - BORDER) * f32(U.viewport_size.y) / 2f;
 
     var color = OSCOPE_BG_COLOR;
 
-    var marks: f32 = 0.0;
+    var marks: f32 = 0f;
 
     // vline
     let x = in.position.x;
     let y = in.position.y;
-    let gcoord = (2.0 * in.texcoord - 1.0) / (1.0 - BORDER);
+    let gcoord = (2f * in.texcoord - 1f) / (1f - BORDER);
 
     if y >= top_margin && y <= bottom_margin {
         var gx = gcoord.x;
         if abs(gx) < 0.1 {
-            gx /= 5.0;
+            gx /= 5f;
         }
-        let vline = round(gcoord.x * 5.0) / 5.0;
+        let vline = round(gcoord.x * 5f) / 5f;
         marks = max(marks, oscope_in_line(gx, vline));
     }
 
@@ -425,14 +403,14 @@ fn oscope_background(in: InterStage) -> vec4f {
     if x >= left_margin && x <= right_margin {
         var gy = gcoord.y;
         if abs(gy) < 0.1 {
-            gy /= 5.0;
+            gy /= 5f;
         }
-        let hline = round(gcoord.y * 4.0) / 4.0;
+        let hline = round(gcoord.y * 4f) / 4f;
         marks = max(marks, oscope_in_line(gy, hline));
     }
 
     color = mix(OSCOPE_BG_COLOR, OSCOPE_LINE_COLOR, marks);
-    return vec4f(color, 1.0);
+    return vec4f(color, 1f);
 }
 
 
@@ -608,15 +586,15 @@ fn srnoise2(x: vec2<f32>, alpha: f32) -> f32
 // Utilities
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {
-    if s == 0.0 {
+    if s == 0f {
         return vec3f(v);
     }
     let hm = h - floor(h);
-    var i = i32(hm * 6.0);
-    let f = (hm * 6.0) - f32(i);
-    let p = v * (1.0 - s);
-    let q = v * (1.0 - s * f);
-    let t = v * (1.0 - s * (1.0 - f));
+    var i = i32(hm * 6f);
+    let f = (hm * 6f) - f32(i);
+    let p = v * (1f - s);
+    let q = v * (1f - s * f);
+    let t = v * (1f - s * (1f - f));
     // i %= 6;
     if i == 0 {
         return vec3f(v, t, p);
@@ -636,19 +614,5 @@ fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {
     if i == 5 {
         return vec3f(v, p, q);
     }
-    return vec3f(0.0);
-}
-
-struct divmod_result_f32 {
-    fract: f32,
-    whole: f32,
-};
-
-fn divmod_f32(d: f32, q: f32) -> divmod_result_f32 {
-    let i = floor(d / q);
-    let f = d - q * i;
-    var result: divmod_result_f32;
-    result.fract = f;
-    result.whole = i;
-    return result;
+    return vec3f(0f);
 }
