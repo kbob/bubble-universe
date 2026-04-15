@@ -65,9 +65,9 @@ struct InterStage {
     if U.theme == 4u {
         return easter_background(in);
     }
-    // if U.theme == 3u {
-    //     return fiesta_background(in);
-    // }
+    if U.theme == 3u {
+        return fiesta_background(in);
+    }
     if U.theme == 2u {
         return midnight_background(in);
     }
@@ -229,19 +229,114 @@ fn midnight_background(in: InterStage) -> vec4f {
 // //  //   //    //     //      //       //        //         //
 // Fiesta Theme
 
-fn fiesta_background(in: InterStage) -> vec4f {
-    // return vec4f(0f, 0f, 0f, 1f);
-    let U = uniforms;
-    // let i = i32(in.texcoord.x * f32(U.seq_length) + 0.5);
-    // let i: i32 = 0;
-    let i = i32(in.texcoord.x * 11f);
-    let h = (INV_PHI * f32(i)) % 1.0;
-    let s = 1.0;
-    let v = 1.0;
-    let a = 1.0;
-    return vec4f(hsv_to_rgb(h, s, v), a);
+const FIESTA_STREAMER_COUNT: f32 = 4.5;
+const FIESTA_FLAG_COUNT: f32 = 5;
+
+fn rfract(x: f32) -> f32 {
+    // rounded fractional part
+    return x - round(x);
 }
 
+fn fiesta_background(in: InterStage) -> vec4f {
+
+    let U = uniforms;
+
+    const K = 0.8f;
+
+    let x = in.xy.x;
+    let y = in.xy.y;
+
+    let sy = y / 2.2 * f32(FIESTA_STREAMER_COUNT);
+    let iy = floor(sy);
+    let fy = sy - iy;
+
+    let sx = 0.55 * (x + INV_PHI * iy);
+    let ix = round(sx);
+    let fx = sx - ix;
+
+    let flag = round(sx * 5f);
+
+    let iv = vec2f(ix, iy);
+
+    let noise =
+        srnoise2(iv, U.t)
+        + 0.5 * srnoise2(iv * 0.5, 2f * U.t)
+        + 0.25 * srnoise2(iv * 0.25, 4f * U.t)
+        ;
+    let cn = 1f + 0.3 * (noise - 0.5);  // 0.7 .. 1.3
+
+    let droop_y = (cosh(cn * K * 2 * fx) - cosh(cn * K)) + 1;
+
+    var in_sky: bool = false;
+    if fy > droop_y || fy < droop_y - 0.5 {
+        // between flag strings
+        in_sky = true;
+    }
+    if abs(sx * 5f - flag) > 0.4 {
+        // between flags on string
+        in_sky = true;
+    }
+    if fract(sx * 50f + 0.7) < 0.4 && fract((fy - droop_y) * 15f) < 0.4 {
+        // holes in flags
+        in_sky = true;
+    } 
+
+    let r2 = dot(in.xy, in.xy);
+    let in_bubble = smoothstep(1.05, 1f, r2);
+
+    let h = fract(INV_PHI * (iy + 0.123) * flag);
+    let flag_color = hsv_to_rgb(h, 1f, 1f);
+    let sky_color = hsv_to_rgb(
+        0.667,
+        mix(0.5f, 1f, 1f - in.texcoord.y),
+        1f,
+    );
+
+    var color: vec3f;
+    if in_sky {
+        color = mix(sky_color, vec3f(0f), 0.9 * in_bubble);
+    } else {
+        color = mix(flag_color, vec3f(0f), 0.8 * in_bubble);
+    }
+    return vec4f(color, 1f);
+    // var h: f32;
+    // var s: f32 = 1f;
+    // var v: f32 = 1f;
+    // h = fract(INV_PHI * (iy + 0.123));
+    // h = 0;
+    // h = (h + sx + 1) % 1;
+    // h = droop_y;
+    // h = fract(INV_PHI * ((iy + 0.123) * flag));
+
+    // if in_sky {
+    //     h = .667;
+    //     s = mix(0.5f, 1f, 1f - in.texcoord.y);
+    //     v = 1f;
+    // }
+
+    // let r2 = dot(in.xy, in.xy);
+    // let in_bubble = smoothstep(1.05, 1f, r2);
+    // let color = mix(hsv_to_rgb(h, s, v), vec3f(0f), in_bubble);
+    // return vec4f(color, 1f);
+
+    // let s = droop_x + 0.5;
+    // let v: f32 = droop_y - sy;
+
+    // let stagger_x = x + srnoise2(vec2f(iy, 0f), U.t);
+    // let droop_y = y - 0.8 * cosh(fract(stagger_x) - 0.5);
+    // let ydm = divmod_f32(droop_y * f32(STREAMER_COUNT) / 2.2, 1.0);
+    // let i = floor(droop_y * f32(STREAMER_COUNT) / 2f);
+    // let f = droop_y - i;
+    // let h = (INV_PHI * (i + 100));
+    // let s = 1.0;
+    // let v = 1.0;
+    // let a = 1.0;
+    // return vec4f(hsv_to_rgb(h, s, v), a);
+}
+
+fn fiesta_y_to_streamer(y: f32) -> f32 {
+    return floor(y / 2.2 * f32(FIESTA_STREAMER_COUNT));
+}
 
 // //  //   //    //     //      //       //        //         //
 // Easter Theme
@@ -252,7 +347,9 @@ fn easter_background(in: InterStage) -> vec4f {
 
     let blend = smoothstep(0.3, 0.7, in.texcoord.x);
     let grass = smoothstep(0.15, 0.1, 1f - in.texcoord.y);
-    let in_out = smoothstep(0.8, 1.2, dot(in.xy, in.xy));
+    let in_out = smoothstep(0.9, 1.1, dot(in.xy, in.xy));
+
+
     let grass_hsv = vec3f(0.333, 1f, 0.3f);
 
     var h = mix(0.2, 0.5, blend);
@@ -264,6 +361,7 @@ fn easter_background(in: InterStage) -> vec4f {
     v = mix(v, grass_hsv.b, grass);
 
     s = mix(0.5 * s, s, in_out);
+    v = mix(0, v, in_out);
     let a = 1.0;
     return vec4f(hsv_to_rgb(h, s, v), a);
 }
@@ -513,12 +611,13 @@ fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {
     if s == 0.0 {
         return vec3f(v);
     }
-    var i = i32(h * 6.0);
-    let f = (h * 6.0) - f32(i);
+    let hm = h - floor(h);
+    var i = i32(hm * 6.0);
+    let f = (hm * 6.0) - f32(i);
     let p = v * (1.0 - s);
     let q = v * (1.0 - s * f);
     let t = v * (1.0 - s * (1.0 - f));
-    i %= 6;
+    // i %= 6;
     if i == 0 {
         return vec3f(v, t, p);
     }
@@ -538,4 +637,18 @@ fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {
         return vec3f(v, p, q);
     }
     return vec3f(0.0);
+}
+
+struct divmod_result_f32 {
+    fract: f32,
+    whole: f32,
+};
+
+fn divmod_f32(d: f32, q: f32) -> divmod_result_f32 {
+    let i = floor(d / q);
+    let f = d - q * i;
+    var result: divmod_result_f32;
+    result.fract = f;
+    result.whole = i;
+    return result;
 }
