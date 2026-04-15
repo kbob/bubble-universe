@@ -60,7 +60,7 @@ def run(args):
 
     # Init the bubbler
     bubbler = Bubbler()
-    bubbler.update_parameters(fps=args.fps)
+    bubbler.update_parameters(fps=args.fps, theme=args.theme)
     bubbler.build_render_graph(
         device=device,
         outputs=output_textures,
@@ -70,8 +70,7 @@ def run(args):
     # Define the main loop
     frame_num = 0
 
-    CYCLE_THEMES = False
-    if CYCLE_THEMES:
+    if args.cycle_themes:
         from itertools import cycle
         from math import isfinite
 
@@ -104,7 +103,7 @@ def run(args):
         #     bloom_amount=0.0,
         # )
 
-        if CYCLE_THEMES:
+        if args.cycle_themes:
             nonlocal fn2
             fn2 += 1
             if fn2 == theme_frame_count:
@@ -135,6 +134,16 @@ def run(args):
         video_out.close()
 
 
+def list_themes():
+    print('Available themes:')
+    for theme in Theme:
+        if theme == Defaults.THEME:
+            default_label = ' (default)'
+        else:
+            default_label = ''
+        print(f'    {theme!s}{default_label}')
+
+
 def build_argparser():
 
     def resolution(s):
@@ -153,11 +162,26 @@ def build_argparser():
         description='Explore the bubble universe',
     )
     parser.add_argument(
+        '-t', '--theme',
+        type=Theme,
+        default=Theme(Defaults.THEME),
+        
+        help=f'set theme (default {Defaults.THEME})',
+    )
+    parser.add_argument(
+        '-c', '--cycle-themes',
+        action='store_true',
+
+        help='cycle through all themes',
+    )
+    parser.add_argument(
         '-r', '--resolution',
         type=resolution,
         default=Defaults.CANVAS_SIZE,
 
-        help=f'set video resolution (default {Defaults.CANVAS_SIZE})',
+        help=
+            f'set video resolution '
+            f'(default {Defaults.CANVAS_SIZE[0]}x{Defaults.CANVAS_SIZE[1]})',
     )
     parser.add_argument(
         '+h', '--no-hdr',
@@ -180,6 +204,15 @@ def build_argparser():
         help='Action',
         metavar='Command',
     )
+
+    # 'list-themes' subcommand
+    theme_parser = subparsers.add_parser(
+        'list-themes',
+
+        help='list available themes',
+        description='List available themes',
+    )
+
 
     # 'record' subcommand
     default_frame_count = round(tau / Defaults.SPEED * MAX_FPS)
@@ -210,7 +243,10 @@ def build_argparser():
 def main():
     parser = build_argparser()
     args = parser.parse_args(sys.argv[1:])
-    run(args)
+    if args.cmd == 'list-themes':
+        list_themes()
+    else:
+        run(args)
 
 if __name__ == '__main__':
     main()

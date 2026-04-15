@@ -103,10 +103,6 @@ shader_source = '''
     }
 '''
 
-# Write hblur fragment shader
-# Add vblur to pass 2 fragment shader
-# Write _T1Pass
-
 
 class TrailerSubgraph(Subgraph, ParameterizedMixIn):
 

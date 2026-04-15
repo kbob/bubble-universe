@@ -23,6 +23,7 @@ class Bubbler(ParameterizedMixIn):
 
     @dataclass
     class Parameters:
+        theme: Theme = Theme(Defaults.THEME)
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
         fps: float = MAX_FPS
@@ -44,7 +45,6 @@ class Bubbler(ParameterizedMixIn):
         self._last_cmap_size = None
         self._last_render_size = None
         self._theme_ramp = [0] # push initial blend amount
-        self._theme = Theme(Defaults.THEME)
 
 
     def build_render_graph(self, device, outputs, use_HDR=USE_HDR):
@@ -175,6 +175,7 @@ class Bubbler(ParameterizedMixIn):
             BackgroundPass('backgrounds B')
                 .attach_output(self.background_image_B)
         )
+        self._active_background = self.background_A
         self.background_mixer = (
             MixerPass('background mixer')
                 .bind_input_A(self.background_image_A)
@@ -274,11 +275,17 @@ class Bubbler(ParameterizedMixIn):
                 enabled=self._theme.background_animated,
             )
 
+        self._active_colors.update_parameters(
+            theme=self._parameters.theme,
+        )
         self.colors_A.update_parameters(
             t=self._time,
         )
         self.colors_B.update_parameters(
             t=self._time,
+        )
+        self._active_background.update_parameters(
+            theme=self._parameters.theme,
         )
         self.background_A.update_parameters(
             t=self._time,
@@ -362,25 +369,33 @@ class Bubbler(ParameterizedMixIn):
 
         self._inc_time(1 / self._parameters.fps)
 
+    @property
+    def _theme(self):
+        return self._parameters.theme
 
     def change_theme(self, theme, frames=1):
-        print(f'change theme -> {theme!s}')
+        # print(f'change theme -> {theme!s}')
+        assert isinstance(theme, Theme)
         ramp = [
             _smoothstep(0, frames, i)
             for i in range(frames + 1)
         ]
-        self._theme = theme
+        self._parameters.theme = theme
 
         if self._active_colors == self.colors_A:
-            self.colors_B.update_parameters(theme=theme)
-            self.background_B.update_parameters(theme=theme)
+            # self.colors_B.update_parameters(theme=theme)
+            # self.background_B.update_parameters(theme=theme)
             self._theme_ramp.extend(ramp[:0:-1])
             self._active_colors = self.colors_B
+            self._active_background = self.background_B
         else:
-            self.colors_A.update_parameters(theme=theme)
-            self.background_A.update_parameters(theme=theme)
+            # self.colors_A.update_parameters(theme=theme)
+            # self.background_A.update_parameters(theme=theme)
             self._theme_ramp.extend(ramp[1:])
             self._active_colors = self.colors_A
+            self._active_background = self.background_A
+        self._active_colors.update_parameters(theme=theme)
+        self._active_background.update_parameters(theme=theme)
 
 
     @property
