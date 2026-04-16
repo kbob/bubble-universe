@@ -16,6 +16,18 @@ class Theme(StrEnum):
     EASTER = 'Easter'
     BONE = 'Bone'
     OSCOPE = 'Oscilloscope'
+    TRIAD = 'Triad'
+
+    @classmethod
+    def from_string(cls, s):
+        try:
+            return cls(s)
+        except ValueError:
+            sl = s.lower()
+            for m in cls:
+                if sl == m.lower():
+                    return m
+            assert False, f'Unknown {cls.__name__} {s!r}'
 
     @classmethod
     def from_int(cls, n):
@@ -26,25 +38,21 @@ class Theme(StrEnum):
 
     @enum.property
     def colors_animated(self):
-        return False            # maybe someday
+        return self in {self.TRIAD}
     
     @enum.property
     def background_animated(self):
         return self in {self.VAPOR, self.MIDNIGHT, self.FIESTA}
 
-
 vapor = Theme.VAPOR
-# print(f'{vapor = }')
-# print(f'{int(vapor) = }')
-# print(f'{Theme.from_int(1) = }')
-# print(f'{Theme('Vapor') = }')
-# print(f'{Theme(f'{OE}stre') = }')
+assert vapor == Theme.from_string('vAPoR')
 assert vapor == Theme.VAPOR
 assert int(vapor) == 1
 assert Theme.from_int(1) == vapor
 assert Theme('Vapor') == vapor
 assert not vapor.colors_animated
 assert vapor.background_animated
+
 
 class ColormapPass(RenderPass, ParameterizedMixIn):
 

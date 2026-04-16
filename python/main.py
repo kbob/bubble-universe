@@ -75,10 +75,9 @@ def run(args):
         from math import isfinite
 
         fn2 = 0
-        cycle_frame_count = round(tau / Defaults.SPEED * args.fps)
         if isfinite(duration):
             theme_count = len(list(Theme))
-            theme_frame_count = cycle_frame_count // theme_count
+            theme_frame_count = duration // theme_count
         else:
             theme_frame_count = args.fps * 3
 
@@ -163,7 +162,7 @@ def build_argparser():
     )
     parser.add_argument(
         '-t', '--theme',
-        type=Theme,
+        type=Theme.from_string,
         default=Theme(Defaults.THEME),
         
         help=f'set theme (default {Defaults.THEME})',
