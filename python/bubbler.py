@@ -33,6 +33,8 @@ class Bubbler(ParameterizedMixIn):
         particle_size: float = Defaults.PARTICLE_SIZE
         trail_persistence: float = Defaults.TRAIL_PERSISTENCE
         trail_diffusion: float = Defaults.TRAIL_DIFFUSION
+        background_amount: float = Defaults.BACKGROUND_AMOUNT
+        overlay_amount: float = Defaults.OVERLAY_AMOUNT
         bloom_amount: float = Defaults.BLOOM_AMOUNT
         bloom_size: float = Defaults.BLOOM_SIZE
 
@@ -319,6 +321,10 @@ class Bubbler(ParameterizedMixIn):
         self.trailer.update_parameters(
             persistence=self._parameters.trail_persistence,
             diffusion=self._parameters.trail_diffusion,
+        )
+        self.compositor.update_parameters(
+            background_amount=self._parameters.background_amount,
+            overlay_amount=self._parameters.overlay_amount,
         )
         self.bloomer.update_parameters(
             bloom_amount=self._parameters.bloom_amount,

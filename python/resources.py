@@ -196,11 +196,6 @@ class Texture(Resource):
     def write_texture(self, device, data, shape=None):
         assert self.texture is not None
         data_view = memoryview(data)
-        # print(f'T.wt:')
-        # print(f'    {self.current_texture().size = }')
-        # print(f'    {data_view = }')
-        # print(f'    {data_view.strides = }')
-        # print(f'    {data_view.shape = }')
         device.queue.write_texture(
             destination=wgpu.TexelCopyTextureInfo(
                 texture=self.texture,

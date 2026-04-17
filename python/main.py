@@ -80,37 +80,55 @@ def run(args):
             theme_frame_count = duration // theme_count
         else:
             theme_frame_count = args.fps * 3
+        tfc = theme_frame_count
+        tff = theme_fade_frames = round(0.2 * tfc)
+        ofif = overlay_fadein_frames = round(0.1 * tfc)
+        ofof = overlay_fadeout_frames = round(0.4 * tfc)
+        ofisf = overlay_fadein_start_frame = 0
+        tfsf = theme_fade_start_frame = tfc - tff
+        ofosf = overlay_fadeout_start_frame = tfsf - ofof
+        # print(f'run: ')
+        # print(f'    {theme_frame_count = }')
+        # print(f'    {overlay_fadein_start_frame = }')
+        # print(f'    {overlay_fadeout_start_frame = }')
+        # print(f'    {theme_fade_start_frame = }')
+
+        # print(f'    {theme_fade_frames = }')
+        # print(f'    {overlay_fadein_frames = } ')
+        # print(f'    {overlay_fadeout_frames = }')
 
         theme_rotor = cycle(Theme)
-        next(theme_rotor) # skip Classic
+        next(theme_rotor)       # skip Classic
 
 
     def draw_frame():
 
         nonlocal frame_num
 
-        # tdf = (frame_num % 1000) / 1000
-        # tdf = 1
-        # bubbler.update_parameters(
-        #     # r=1,
-        #     seq_count=80,
-        #     seq_length=50,
-        #     # particle_size=0.707,
-        #     particle_size=1.414,
-        #     trail_persistence=0.94,
-        #     trail_diffusion=0.9,
-        #     bloom_amount=0.0,
-        # )
-
         if args.cycle_themes:
             nonlocal fn2
+            if ofisf <= fn2 < ofisf + ofif:
+                # fading overlay in
+                ovl = _smoothstep(ofisf, ofisf + ofif, fn2)
+            elif fn2 < ofosf:
+                # overlay is in
+                ovl = 1
+            elif ofosf <= fn2 < ofosf + ofof:
+                # fading overlay out
+                ovl = _smoothstep(ofosf + ofof, ofosf, fn2)
+            else:
+                ovl = 0
+            bubbler.update_parameters(overlay_amount=ovl)
+            if fn2 == tfsf:
+                new_theme = next(theme_rotor)
+                bubbler.change_theme(new_theme, frames=theme_fade_frames)
+
             fn2 += 1
             if fn2 == theme_frame_count:
-                new_theme = next(theme_rotor)
-                bubbler.change_theme(new_theme, frames=40)
                 fn2 = 0
 
         bubbler.draw_frame()
+        frame_num += 1
 
         if recording_video:
             texture_data = video_texture.read_texture(device)
@@ -120,7 +138,6 @@ def run(args):
             )
             video_out.append_frame(image_data)
 
-            frame_num += 1
             if frame_num == duration:
                 loop.stop()
 
@@ -131,6 +148,12 @@ def run(args):
     # Finish
     if recording_video:
         video_out.close()
+
+
+def _smoothstep(e0, e2, x):
+    assert e0 != e2
+    sx = max(0, min(1, (x - e0) / (e2 - e0)))
+    return -2 * sx**3 + 3 * sx**2
 
 
 def list_themes():

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from wgsl_types import *
 
+from constants import *
 from parameterized import ParameterizedMixIn
 from passes import Access, Attachment, Binding, RenderPass
 from resources import Sampler
@@ -85,12 +86,12 @@ class CompositorPass(RenderPass, ParameterizedMixIn):
 
     @dataclass
     class Parameters:
-        background_amount: float = 1
-        overlay_amount: float = 1
+        background_amount: float = Defaults.BACKGROUND_AMOUNT
+        overlay_amount: float = Defaults.OVERLAY_AMOUNT
 
     class _Uniforms(Uniforms):
-        background_amount: f32 = 1
-        overlay_amount: f32 = 1
+        background_amount: f32 = Defaults.BACKGROUND_AMOUNT
+        overlay_amount: f32 = Defaults.OVERLAY_AMOUNT
         overlay_origin: vec2f
         overlay_size: vec2f
 

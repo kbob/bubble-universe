@@ -22,6 +22,8 @@ class Defaults:
     VIDEO_FILE = 'temp.mp4'
     TRAIL_PERSISTENCE = 0.4
     TRAIL_DIFFUSION = 0
+    BACKGROUND_AMOUNT = 1
+    OVERLAY_AMOUNT = 0
     BLOOM_AMOUNT = 0.03 / PARTICLE_SIZE
     BLOOM_SIZE = 0.005
     THEME = 'Classic'
