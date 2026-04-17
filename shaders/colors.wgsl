@@ -136,7 +136,7 @@ fn tricolor_color(in: InterStage) -> vec4f {
     let n = U.seq_count;
     let i = u32(round(in.texcoord.x * f32(n)));
 
-    var h = U.t / TAU + 0.4 * in.texcoord.x;
+    var h = 5f * U.t / TAU + 0.15 * in.texcoord.x;
     if i >= n * 2 / 3 {
         // shift 240 degrees around the hue wheel
         h += 2f / 3f;
@@ -146,7 +146,12 @@ fn tricolor_color(in: InterStage) -> vec4f {
     }
     let s = 1f;
     let v = 1f;
-    let a = f32(i % 2) * (1f - pow(2 * in.texcoord.y, 2f));
+
+    // cycle alpha to emphasize different parts of the particle sequenc
+    let c = 3f * U.t / TAU;
+    let cc = fract(c + in.texcoord.y);
+    let a = f32(i % 2) * (1f - pow(2 * cc, 2f));
+
     return vec4f(hsv_to_rgb(h, s, v), a);
 }
 
