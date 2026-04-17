@@ -9,6 +9,7 @@ from drawer import DrawingPass
 from drawer_mapped import ColorMappedDrawingPass
 from light_bloom import BloomSubgraph
 from mixer import MixerPass
+from overlay import OverlayPass
 from parameterized import ParameterizedMixIn
 from particle_motion import ParticleMotionPass
 from rendergraph import RenderGraph
@@ -102,12 +103,13 @@ class Bubbler(ParameterizedMixIn):
             shape=(MAX_SEQ_COUNT, MAX_SEQ_LENGTH),
         )
         if self._use_HDR:
-            # self.background_image = Texture(
-            #     name='background',
-            #     format=HDR_PIXEL_FORMAT,
-            #     shape=(*render_size, 4),
-            #     renderable=True,
-            # )
+            overlay_size = OverlayPass.overlay_size(render_size)
+            self.overlay_texture = Texture(
+                name='overlay',
+                format='rgba8unorm',
+                shape=(*overlay_size, 4),
+                writable=True,
+            )
             self.trails_image = Texture(
                 name='trails',
                 format=HDR_PIXEL_FORMAT,
@@ -209,11 +211,16 @@ class Bubbler(ParameterizedMixIn):
         ]
 
         if self._use_HDR:
+            self.overlayer = (
+                OverlayPass()
+                    .attach_output(self.overlay_texture)
+            )
             self.compositor = (
                 CompositorPass()
                     .bind_background(self.background_image)
                     .bind_trails(self.trails_image)
                     .bind_particles(self.particles_image)
+                    .bind_overlay(self.overlay_texture)
                     .attach_output(self.composite_image)
             )
             self.trailer = (
@@ -232,6 +239,7 @@ class Bubbler(ParameterizedMixIn):
                     .attach_output(image_dest)
             )
             passes += [
+                self.overlayer,
                 self.compositor,
                 self.trailer,
                 self.bloomer,
@@ -304,6 +312,10 @@ class Bubbler(ParameterizedMixIn):
             seq_length=self._parameters.seq_length,
             particle_size=self._parameters.particle_size,
         )
+        self.overlayer.update_parameters(
+            theme=self._parameters.theme,
+            canvas_size=self.composite_image.current_size(),
+        )
         self.trailer.update_parameters(
             persistence=self._parameters.trail_persistence,
             diffusion=self._parameters.trail_diffusion,
@@ -346,6 +358,8 @@ class Bubbler(ParameterizedMixIn):
                 self.bloomed_image.resize(self.device, render_size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, render_size)
+            overlay_size = OverlayPass.overlay_size(render_size)
+            self.overlayer.resize(self.device, overlay_size)
 
             # Resize passes
             self.background_mixer.resize(self.device, render_size)

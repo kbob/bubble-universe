@@ -16,7 +16,7 @@
 * colors
   - &#x2705; classic RGB
   - ~~HSV colors~~
-  - animated colormap
+  - &#x2705; animated colormap
   - &#x2705; color/gradient the background outside the circle
   - color schemes
     + &#x2705; vaporwave
@@ -29,7 +29,7 @@
   - perspective camera
   - rotation
   - map points to 3D somehow
-* UI
+* UI (Javascript)
   - replace alert box with window
   - sliders and buttons
   - hide the cursor when it's inactive.  (css: { cursor: none; })

@@ -193,18 +193,23 @@ class Texture(Resource):
         else:
             return self.shape[:2]
 
-    def write_texture(self, device, data):
+    def write_texture(self, device, data, shape=None):
         assert self.texture is not None
         data_view = memoryview(data)
+        # print(f'T.wt:')
+        # print(f'    {self.current_texture().size = }')
+        # print(f'    {data_view = }')
+        # print(f'    {data_view.strides = }')
+        # print(f'    {data_view.shape = }')
         device.queue.write_texture(
             destination=wgpu.TexelCopyTextureInfo(
                 texture=self.texture,
             ),
             data=data_view,
             data_layout=wgpu.TexelCopyBufferLayout(
-                bytes_per_row=data_view.strides[0],
+                bytes_per_row=self.shape[0] * 4,
             ),
-            size=data_view.nbytes,
+            size=shape or data_view.shape,
         )
 
     def read_texture(self, device):

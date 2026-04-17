@@ -76,7 +76,7 @@ def run(args):
 
         fn2 = 0
         if isfinite(duration):
-            theme_count = len(list(Theme))
+            theme_count = len(Theme)
             theme_frame_count = duration // theme_count
         else:
             theme_frame_count = args.fps * 3
