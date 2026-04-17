@@ -314,7 +314,7 @@ class Bubbler(ParameterizedMixIn):
         )
         self.overlayer.update_parameters(
             theme=self._parameters.theme,
-            canvas_size=self.composite_image.current_size(),
+            canvas_size=self.resize_controller.current_size(),
         )
         self.trailer.update_parameters(
             persistence=self._parameters.trail_persistence,
@@ -359,7 +359,7 @@ class Bubbler(ParameterizedMixIn):
             if self._is_multi_output:
                 self.image_texture.resize(self.device, render_size)
             overlay_size = OverlayPass.overlay_size(render_size)
-            self.overlayer.resize(self.device, overlay_size)
+            self.overlay_texture.resize(self.device, overlay_size)
 
             # Resize passes
             self.background_mixer.resize(self.device, render_size)
