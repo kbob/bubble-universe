@@ -39,7 +39,7 @@ struct InterStage {
     let U = uniforms;
 
     if U.theme == 7u {
-        return tricolor_color(in);
+        return triad_color(in);
     }
     if U.theme == 6u {
         return oscope_color(in);
@@ -129,7 +129,7 @@ fn oscope_color(in: InterStage) -> vec4f {
     return vec4f(r, g, b, a);
 }
 
-fn tricolor_color(in: InterStage) -> vec4f {
+fn triad_color(in: InterStage) -> vec4f {
     
     let U = uniforms;
 

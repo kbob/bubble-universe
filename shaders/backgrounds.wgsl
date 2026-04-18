@@ -56,6 +56,9 @@ struct InterStage {
 
     let U = uniforms;
 
+    // if U.theme == 7u {
+    //     return triad_color(in);
+    // }
     if U.theme == 6u {
         return oscope_background(in);
     }
@@ -89,61 +92,66 @@ fn classic_background(in: InterStage) -> vec4f {
 
 // //  //   //    //     //      //       //        //         //
 // Vapor Theme
+//
+// The vapor theme environment is:
+//     sky: dark blue gradient fade to lighter blue to pink
+//     horizon line: light blue
+//     floor:
+//         dark blue
+//         light blue horizontal moving lines
+//         light blue vertical lines
+//         light blue glow around lines
+//         distance fade to silver
+//
+// Around the bubble, add a pink glow.
+// Inside the bubble:
+//     calculate reflection (R) and refraction vectors (T)
+//     sample the environment using R and T inaccurately.
+//     mix together, R higher at bubble edge, T higher in center
+//     mix against dark blue, darker in center, more R+T at the edge
 
-fn vapor_background(in: InterStage) -> vec4f {
 
-    let U = uniforms;
+const VAPOR_PINK = vec3f(1f, 0f, 0.75);
+const VAPOR_LIGHT_BLUE = vec3f(0.3, 0.5, 1f);
+const VAPOR_DARK_BLUE = vec3f(0.02, 0f, 0.10);
+const VAPOR_SILVER = vec3f(0.5);
+const VAPOR_BUBBLE_IOR = 1.5;   // index of refraction
 
-    const PINK = vec3f(1f, 0f, 0.75);
-    const LIGHT_BLUE = vec3f(0.3, 0.5, 1f);
-    const DARK_BLUE = vec3f(0.02, 0f, 0.10);
-    const SILVER = vec3f(0.5);
+fn vapor_env(xy: vec2f, t: f32) -> vec3f {
 
     const HORIZON_Y = 0.2;
     const HORIZON_THICKNESS = 0.01;
     const FLOOR_FADE_H = 0.1;
 
-    let x = in.xy.x;
-    let y = in.xy.y;
-
-    // What we're doing
-    // in bubble: darker dark blue
-    // around bubble: pink glow
-    // sky: dark blue gradient fade to lighter blue to pink
-    // horizon line: light blue
-    // floor:
-    //     dark blue
-    //     light blue hlines
-    //     light blue vlines
-    //     light blue glow around lines
-    //     distance fade to silver
+    let x = xy.x;
+    let y = xy.y;
 
     var color: vec3f;
     if y > HORIZON_Y {
         // sky
         let sky_gradient = min(1f, y - HORIZON_Y);
-        color = mix(5f * DARK_BLUE, DARK_BLUE, sky_gradient);
+        color = mix(5f * VAPOR_DARK_BLUE, VAPOR_DARK_BLUE, sky_gradient);
         // sunset (pink)
         let sunset_mix = pow(min(1f, (y - HORIZON_Y) * 4f), 0.5);
-        color = mix(PINK, 1.5 * color, sunset_mix);
+        color = mix(VAPOR_PINK, 1.5 * color, sunset_mix);
     } else if (y > HORIZON_Y - HORIZON_THICKNESS) {
         // horizon
-        color = LIGHT_BLUE;
+        color = VAPOR_LIGHT_BLUE;
     } else {
         // floor
-        color = DARK_BLUE;
+        color = VAPOR_DARK_BLUE;
 
         // grid
         // perspective coord
         let py = y - HORIZON_Y;
-        let p = vec3f(x / py, 0f, 3f / py - 15f * U.t);
+        let p = vec3f(x / py, 0f, 3f / py - 15f * t);
 
         // vlines
         let vl_dist = abs(p.x - round(p.x));
         let vline_mix =
             0.94 * smoothstep(0.005, 0f, vl_dist)
             + 0.06 * smoothstep(0.15, 0f, vl_dist);
-        color = mix(color, LIGHT_BLUE, vline_mix);
+        color = mix(color, VAPOR_LIGHT_BLUE, vline_mix);
 
         // hlines
         let hl_dist = abs(p.z - round(p.z));
@@ -151,24 +159,38 @@ fn vapor_background(in: InterStage) -> vec4f {
         let hline_mix =
             0.94 * smoothstep(hl_thickness, 0f, hl_dist)
             + 0.06 * smoothstep(0.15, 0f, hl_dist);
-        color = mix(color, LIGHT_BLUE, hline_mix);
+        color = mix(color, VAPOR_LIGHT_BLUE, hline_mix);
 
         // floor distance fade
         let fade_y = (y + FLOOR_FADE_H) / HORIZON_Y;
-        let floor_fade = pow(clamp(fade_y, 0f, 1f), 1.5);
-        color = mix(color, SILVER, floor_fade);
+        let floor_fade = pow(saturate(fade_y), 1.5);
+        color = mix(color, VAPOR_SILVER, floor_fade);
     }
+    return color;
+}
 
+fn vapor_background(in: InterStage) -> vec4f {
+
+    let U = uniforms;
+
+    var color: vec3f;
     let r2 = dot(in.xy, in.xy);
     if r2 < 1f {
-        // in the bubble
-        color = 0.3 * DARK_BLUE;
+        // in bubble: do reflection and refraction
+        let rt = reflect_refract(in.xy, VAPOR_BUBBLE_IOR);
+        let R_color = vapor_env(rt.R.xy, -U.t);
+        let T_color = vapor_env(rt.T.xy / -rt.T.z, U.t);
+        color = mix(T_color, R_color, r2);
+        color = mix(0.1 * VAPOR_DARK_BLUE, 0.8 * color, 0.1 + 0.4 * r2);
+
     } else {
-        // apply bubble glow.
-        // bubble glow is oval.
+        // outside bubble:
+        // get environment, then add pink glow
+        let x = in.xy.x;
+        color = vapor_env(in.xy, U.t);
         let glow_size = 0.2 + 0.3 * x * x;
         let bubble_glow = 0.3 * smoothstep(1f + glow_size, 1f - glow_size, r2);
-        color = mix(color, PINK, bubble_glow);
+        color = mix(color, VAPOR_PINK, bubble_glow);
     }
 
     return vec4f(color, 1f);
@@ -349,6 +371,15 @@ fn easter_background(in: InterStage) -> vec4f {
 // Bone Theme
 
 fn bone_background(in: InterStage) -> vec4f {
+
+    return vec4f(0f, 0f, 0f, 1f);
+}
+
+
+// //  //   //    //     //      //       //        //         //
+// Triad Theme
+
+fn triad_background(in: InterStage) -> vec4f {
     return vec4f(0f, 0f, 0f, 1f);
     let h = 0.1 + 0.15 * in.texcoord.x;
     let s = 0.4 * in.texcoord.y;
@@ -411,6 +442,32 @@ fn oscope_background(in: InterStage) -> vec4f {
 
     color = mix(OSCOPE_BG_COLOR, OSCOPE_LINE_COLOR, marks);
     return vec4f(color, 1f);
+}
+
+
+// //  //   //    //     //      //       //        //         //          //
+// Sphere reflection and refraction
+
+struct RT {
+    R: vec3f,
+    T: vec3f,
+};
+
+// calculate 1st reflection and 1st refraction of a ray hitting a sphere
+fn reflect_refract(xy: vec2f, rel_index: f32) -> RT {
+    let r2 = dot(xy, xy);
+    if r2 >= 1f {
+        return RT (vec3f(0f), vec3f(0f));
+    }
+    let N1 = vec3f(xy, sqrt(1 - r2));
+    let I = vec3f(0f, 0f, -1f);
+    let R1 = reflect(I, N1);
+    let T1 = refract(I, N1, 1 / rel_index);
+    let t = -dot(T1, N1);
+    let N2 = N1 + T1 * t;
+    let T2 = refract(T1, N2, 1 / rel_index);
+
+    return RT(R1, T2);
 }
 
 
@@ -583,7 +640,7 @@ fn srnoise2(x: vec2<f32>, alpha: f32) -> f32
 
 
 // //  //   //    //     //      //       //        //         //
-// Utilities
+// Color spaces
 
 fn hsv_to_rgb(h: f32, s: f32, v: f32) -> vec3f {
     if s == 0f {

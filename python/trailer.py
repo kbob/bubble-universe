@@ -89,7 +89,7 @@ shader_source = '''
         // Composite
         let color = U.persistence * (trails + diffused + particles);
 
-        return vec4f(color.rgb, clamp(color.a, 0f, 1f));
+        return vec4f(color.rgb, saturate(color.a));
     };
 
     fn blur_1d(coord: vec2f, delta: vec2f) -> vec4f {

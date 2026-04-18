@@ -5,6 +5,11 @@ from PIL import Image
 EMIT_MP4 = False
 EMIT_PNGS = True
 
+# To convert the PNG images into a video, use this command.
+#
+#    $ ffmpeg -framerate 60 -i image-%04d.png video.mp4
+
+
 frame_no = 0
 
 class VideoOutputFile:
