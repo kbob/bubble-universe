@@ -1,6 +1,4 @@
-# from colorsys import hsv_to_rgb
 from dataclasses import dataclass
-# from enum import StrEnum
 import enum
 
 from colors import Theme

@@ -314,22 +314,23 @@ class Bubbler(ParameterizedMixIn):
             seq_length=self._parameters.seq_length,
             particle_size=self._parameters.particle_size,
         )
-        self.overlayer.update_parameters(
-            theme=self._parameters.theme,
-            canvas_size=self.resize_controller.current_size(),
-        )
-        self.trailer.update_parameters(
-            persistence=self._parameters.trail_persistence,
-            diffusion=self._parameters.trail_diffusion,
-        )
-        self.compositor.update_parameters(
-            background_amount=self._parameters.background_amount,
-            overlay_amount=self._parameters.overlay_amount,
-        )
-        self.bloomer.update_parameters(
-            bloom_amount=self._parameters.bloom_amount,
-            bloom_size=self._parameters.bloom_size,
-        )
+        if self._use_HDR:
+            self.overlayer.update_parameters(
+                theme=self._parameters.theme,
+                canvas_size=self.resize_controller.current_size(),
+            )
+            self.trailer.update_parameters(
+                persistence=self._parameters.trail_persistence,
+                diffusion=self._parameters.trail_diffusion,
+            )
+            self.compositor.update_parameters(
+                background_amount=self._parameters.background_amount,
+                overlay_amount=self._parameters.overlay_amount,
+            )
+            self.bloomer.update_parameters(
+                bloom_amount=self._parameters.bloom_amount,
+                bloom_size=self._parameters.bloom_size,
+            )
 
         # Set intermediate textures' sizes
 
@@ -362,10 +363,10 @@ class Bubbler(ParameterizedMixIn):
                 self.particles_image.resize(self.device, render_size)
                 self.composite_image.resize(self.device, render_size)
                 self.bloomed_image.resize(self.device, render_size)
+                overlay_size = OverlayPass.overlay_size(render_size)
+                self.overlay_texture.resize(self.device, overlay_size)
             if self._is_multi_output:
                 self.image_texture.resize(self.device, render_size)
-            overlay_size = OverlayPass.overlay_size(render_size)
-            self.overlay_texture.resize(self.device, overlay_size)
 
             # Resize passes
             self.background_mixer.resize(self.device, render_size)

@@ -38,7 +38,7 @@ struct InterStage {
         // landscape
         scale = vec2f(w / h, 1f);
     }
-    scale /= 0.9;
+    scale *= 1 / (1 - BORDER);
 
     let pos = corners[vertex_index];
     let xy = pos * scale;
@@ -144,7 +144,8 @@ fn vapor_env(xy: vec2f, t: f32) -> vec3f {
         // grid
         // perspective coord
         let py = y - HORIZON_Y;
-        let p = vec3f(x / py, 0f, 3f / py - 15f * t);
+        // let p = vec3f(x / py, 0f, 3f / py - 15f * t);
+        let p = vec3f(x / py, 0f, 3f / py - (100f / TAU) * t);
 
         // vlines
         let vl_dist = abs(p.x - round(p.x));
@@ -397,6 +398,7 @@ const OSCOPE_HALF_LINE_WIDTH = OSCOPE_LINE_WIDTH * 0.5;
 const OSCOPE_BG_COLOR = vec3f(0.05);
 const OSCOPE_LINE_COLOR = vec3f(0.2);
 const OSCOPE_VDIV_COUNT: u32 = 10;
+const OSCOPE_HDIV_COUNT: u32 = 8;
 
 fn oscope_in_line(x: f32, line: f32) -> f32 {
     return
@@ -421,22 +423,24 @@ fn oscope_background(in: InterStage) -> vec4f {
     let y = in.position.y;
     let gcoord = (2f * in.texcoord - 1f) / (1f - BORDER);
 
-    if y >= top_margin && y <= bottom_margin {
+    if y >= top_margin && y <= bottom_margin && abs(gcoord.x) < 1.05 {
         var gx = gcoord.x;
         if abs(gx) < 0.1 {
-            gx /= 5f;
+            gx /= 5f;           // make centerline thicker
         }
-        let vline = round(gcoord.x * 5f) / 5f;
+        let gscale = f32(OSCOPE_VDIV_COUNT) / 2f;
+        let vline = round(gcoord.x * gscale) / gscale;
         marks = max(marks, oscope_in_line(gx, vline));
     }
 
     // hline
-    if x >= left_margin && x <= right_margin {
+    if x >= left_margin && x <= right_margin && abs(gcoord.y) < 1.05 {
         var gy = gcoord.y;
         if abs(gy) < 0.1 {
-            gy /= 5f;
+            gy /= 5f;           // make centerline thicker
         }
-        let hline = round(gcoord.y * 4f) / 4f;
+        let gscale = f32(OSCOPE_HDIV_COUNT) / 2f;
+        let hline = round(gcoord.y * gscale) / gscale;
         marks = max(marks, oscope_in_line(gy, hline));
     }
 
