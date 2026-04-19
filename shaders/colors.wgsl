@@ -143,7 +143,8 @@ fn triad_color(in: InterStage) -> vec4f {
 
     var h = 1f * U.t / TAU + HUE_SPREAD * in.texcoord.x;
     // split hues into three bands
-    h += f32(3 * i / n) / 3f;
+    let band = f32(3 * i / n) / 3f;
+    h += band;
     let s = 1f;
     let v = 1f;
 
@@ -154,7 +155,7 @@ fn triad_color(in: InterStage) -> vec4f {
     // plus decimation
 
     // cycle alpha to emphasize different parts of the particle sequenc
-    let a_rotor = 3f * U.t / TAU;
+    let a_rotor = fract(3f * U.t / TAU + band);
 
     // Zero order: boxcar filter
     let b = fract(a_rotor + in.texcoord.y + SEQ_WIDTH / 2f);
