@@ -130,27 +130,57 @@ fn oscope_color(in: InterStage) -> vec4f {
 }
 
 fn triad_color(in: InterStage) -> vec4f {
-    
+
     let U = uniforms;
 
-    let n = U.seq_count;
-    let i = u32(round(in.texcoord.x * f32(n)));
+    let HUE_SPREAD = 0.15;
+    let SEQ_WIDTH = 0.4;
 
-    var h = 5f * U.t / TAU + 0.15 * in.texcoord.x;
-    if i >= n * 2 / 3 {
-        // shift 240 degrees around the hue wheel
-        h += 2f / 3f;
-    } else if i >= n / 3 {
-        // shift 120 degrees around the hue wheel
-        h += 1f / 3f;
-    }
+    let n = U.seq_count;
+    // let i = u32(in.texcoord.x * f32(n));
+    let i = u32(in.position.x);
+
+    var h = 1f * U.t / TAU + HUE_SPREAD * in.texcoord.x;
+    // split hues into three bands
+    h += f32(3 * i / n) / 3f;
     let s = 1f;
     let v = 1f;
 
+    // 4 different alpha channel algorithms: 0th through 4th order
+    // plus decimation
+
     // cycle alpha to emphasize different parts of the particle sequenc
-    let c = 3f * U.t / TAU;
-    let cc = fract(c + in.texcoord.y);
-    let a = f32(i % 2) * (1f - pow(2 * cc, 2f));
+    let a_rotor = 3f * U.t / TAU;
+
+    // Zero order: boxcar filter
+    let b = fract(a_rotor + in.texcoord.y + SEQ_WIDTH / 2f);
+    let a0 = select(0f, 1f, b < SEQ_WIDTH);
+
+    // First order: triangle filter
+    let c = fract(a_rotor + in.texcoord.y + 0.5);
+    let cc =  2f * min(c, 1f - c);
+    let ccc = (cc - 1f) / SEQ_WIDTH + 1f;
+    let a1 = max(0f, ccc);
+
+    // Second order: parabolic filter
+    let d = fract(a_rotor + in.texcoord.y);
+    let dd = d * (1f - d) / (SEQ_WIDTH / 2f);
+    let a2 = max(0f, 1f - dd);
+
+    // 3rd order: smoothstep
+    let e = fract(a_rotor + in.texcoord.y);
+    let ee = smoothstep(1f - SEQ_WIDTH * 0.7, 1f, e);
+    let eee = smoothstep(0f, SEQ_WIDTH * 0.7, e);
+    let a3 = 1 + ee - eee;
+
+    // decimate
+    let keep = i % 4 <= 1;
+
+    // split for A-B comparison
+    let a_split = select(a0, a0, in.texcoord.x > 0.5);
+
+    // final alpha
+    let a = select(0f, a1, keep);
 
     return vec4f(hsv_to_rgb(h, s, v), a);
 }

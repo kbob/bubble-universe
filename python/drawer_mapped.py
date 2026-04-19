@@ -31,8 +31,8 @@ class ColorMappedDrawingPass(RenderPass, ParameterizedMixIn):
         self.colormap = None
         self.colormap_sampler = Sampler(
             name='colormap sampler',
-            min_filter='linear',
-            mag_filter='linear',
+            min_filter='nearest',
+            mag_filter='nearest',
         )
         self.shader_file = 'draw_mapped.wgsl'
         self.shader = self.read_shader(self.shader_file)
