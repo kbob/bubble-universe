@@ -56,9 +56,9 @@ struct InterStage {
 
     let U = uniforms;
 
-    // if U.theme == 7u {
-    //     return triad_color(in);
-    // }
+    if U.theme == 7u {
+        return triad_background(in);
+    }
     if U.theme == 6u {
         return oscope_background(in);
     }
@@ -202,6 +202,7 @@ fn vapor_background(in: InterStage) -> vec4f {
 // Midnight Theme
 
 fn midnight_background(in: InterStage) -> vec4f {
+
     let U = uniforms;
 
     // Bubble threshold.  Slightly inside the bubble and blurred.
@@ -378,19 +379,6 @@ fn bone_background(in: InterStage) -> vec4f {
 
 
 // //  //   //    //     //      //       //        //         //
-// Triad Theme
-
-fn triad_background(in: InterStage) -> vec4f {
-    return vec4f(0f, 0f, 0f, 1f);
-    let h = 0.1 + 0.15 * in.texcoord.x;
-    let s = 0.4 * in.texcoord.y;
-    let v = 0.6 + 0.3 * in.texcoord.y;
-    let a = 1f;
-    return vec4f(hsv_to_rgb(h, s, v), a);
-}
-
-
-// //  //   //    //     //      //       //        //         //
 // Oscilloscope Theme
 
 const OSCOPE_LINE_WIDTH = 0.003;
@@ -448,6 +436,53 @@ fn oscope_background(in: InterStage) -> vec4f {
     return vec4f(color, 1f);
 }
 
+
+// //  //   //    //     //      //       //        //         //
+// Triad Theme
+
+fn triad_background(in: InterStage) -> vec4f {
+
+    let U = uniforms;
+
+    const BORDER_COLOR = vec3f(0.6);
+    const HUE_BAND_WIDTH = 0.05;
+    const INNER_RADIUS: f32 = (1f / (1f - BORDER) - 1f) * 0.25 + 1f;
+    const OUTER_RADIUS: f32 = (1f / (1f - BORDER) - 1f) * 0.75 + 1f;
+    const BLW = 0.02;           // border line width
+    const HBLW = BLW / 2f;      // half BLW
+
+    var color = vec3f(0f);
+    let r2 = dot(in.xy, in.xy);
+    let r = sqrt(r2);
+    if INNER_RADIUS - BLW <= r && r <= OUTER_RADIUS + BLW {
+        let h = fract(atan2(in.xy.y, in.xy.x) / TAU);
+
+        let hue0 = 1f * U.t / TAU;
+        let hues = vec3f(hue0, hue0 + 1f / 3f, hue0 + 2f / 3f);
+
+        // is fragment in the hue ring?
+        let in_ring = INNER_RADIUS < r && r < OUTER_RADIUS;
+
+        // is fragment in a highlighted hue band?
+        let in_bands = any(fract(h - hues) < vec3f(HUE_BAND_WIDTH));
+
+        // is fragment in a hue band border?
+        // halw - half angular line width
+        let halw = vec3f(HBLW / TAU / r);
+        let side0 = any(abs(fract(hues - h + 0.5) - 0.5) < halw);
+        let side1 = any(abs(fract(hues + HUE_BAND_WIDTH - h + 0.5) - 0.5) < halw);
+        let in_border: bool = (in_bands && !in_ring) || (side0 | side1);
+
+        // compute colors.  h is above.
+        if in_ring {
+            let s = select(0.7, 1f, in_bands);
+            let v = select(0.1, 1f, in_bands);
+            color = hsv_to_rgb(h, s, v);
+        }
+        color = select(color, BORDER_COLOR, in_border);
+    }
+    return vec4f(color, 1f);
+}
 
 // //  //   //    //     //      //       //        //         //          //
 // Sphere reflection and refraction

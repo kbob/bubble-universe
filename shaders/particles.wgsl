@@ -44,14 +44,29 @@ fn compute_shader(@builtin(global_invocation_id) id: vec3u) {
     v = cos(fi + v) + cos(U.r * fi + x);
     x = u + U.t;
 
-    uvs[i * U.seq_length] = vec2f(u, -v);
+    store_uv(i, 0, vec2f(u, -v));
+    // uvs[i * U.seq_length] = vec2f(u, -v);
     for (var j = 1u; j < U.seq_length; j++) {
 
       u = sin(fi + v) + sin(U.r * fi + x);
       v = cos(fi + v) + cos(U.r * fi + x);
       x = u + U.t;
-      uvs[i * U.seq_length + j] = vec2f(u, -v);
+      store_uv(i, j, vec2f(u, -v));
+      // uvs[i * U.seq_length + j] = vec2f(u, -v);
     }
+  }
+}
+
+fn store_uv(i: u32, j: u32, uv: vec2f) {
+  let U = uniforms;
+  if i % 4 == 0 {
+    uvs[i * U.seq_length + j] = uv;
+  } else {
+    const X0 = -3.84f;
+    const XW = 1.6f;
+    let uu = XW * f32(i) / f32(U.seq_count - 1) + X0;
+    let vv = (f32(j) - f32(U.seq_length - 1) / 2f) / 20f;
+    uvs[i * U.seq_length + j] = vec2(uu, vv);
   }
 }
 
@@ -61,10 +76,10 @@ fn rectangular_grid(id: vec3u) {
 
   let i: u32 = id.x;
   let fi: f32 = f32(i);
-  let u: f32 = fi / f32(U.seq_count - 1) * 4f - 2f;
+  let u: f32 = fi / f32(U.seq_count - 1) * sqrt(8f) - sqrt(2f);
   if i < U.seq_count {
     for (var j = 0u; j < U.seq_length; j++) {
-      let v: f32 = f32(j) / f32(U.seq_length - 1) * 4f - 2f;
+      let v: f32 = f32(j) / f32(U.seq_length - 1) * sqrt(8f) - sqrt(2f);
       uvs[i * U.seq_length + j] = vec2f(u, v);
     }
   }

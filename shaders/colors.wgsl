@@ -131,6 +131,7 @@ fn oscope_color(in: InterStage) -> vec4f {
 
 fn triad_color(in: InterStage) -> vec4f {
 
+
     let U = uniforms;
 
     let HUE_SPREAD = 0.15;
@@ -145,6 +146,9 @@ fn triad_color(in: InterStage) -> vec4f {
     h += f32(3 * i / n) / 3f;
     let s = 1f;
     let v = 1f;
+
+    // 4 different alpha channel algorithms: 0th through 4th order
+    // plus decimation
 
     // 4 different alpha channel algorithms: 0th through 4th order
     // plus decimation
