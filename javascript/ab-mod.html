@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Square with Opacity Control</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        canvas {
+            /* Subtle border to visualize canvas area on black background */
+            border: 1px solid #222;
+        }
+        
+        .disclosure-triangle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            z-index: 100;
+            transition: transform 0.2s ease;
+            padding: 0;
+            background: none;
+            border: none;
+        }
+        
+        .disclosure-triangle svg {
+            width: 100%;
+            height: 100%;
+            fill: #fff;
+        }
+        
+        .disclosure-triangle.open {
+            transform: rotate(90deg);
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 52px;
+            left: 20px;
+            background-color: rgba(40, 40, 40, 0.45);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 16px 20px;
+            border-radius: 8px;
+            color: #fff;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 99;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .control-panel.visible {
+            display: flex;
+        }
+        
+        .control-panel label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] {
+            width: 140px;
+            cursor: pointer;
+            accent-color: #ff4444;
+        }
+        
+        .value-display {
+            font-size: 12px;
+            width: 35px;
+            text-align: right;
+            font-family: monospace;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+
+    <button id="disclosure" class="disclosure-triangle" aria-expanded="false" tabindex="0">
+        <svg viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+        </svg>
+    </button>
+
+    <div id="controlPanel" class="control-panel">
+        <label for="opacitySlider">Square Transparency</label>
+        <div class="slider-container">
+            <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
+            <span id="opacityValue" class="value-display">1.00</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        const disclosure = document.getElementById('disclosure');
+        const controlPanel = document.getElementById('controlPanel');
+        const slider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+
+        let currentOpacity = 1;
+        const squareSize = 100;
+        const x = (canvas.width - squareSize) / 2;
+        const y = (canvas.height - squareSize) / 2;
+
+        function drawSquare() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = currentOpacity;
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(x, y, squareSize, squareSize);
+            ctx.globalAlpha = 1.0; // Reset context alpha for future drawings
+        }
+
+        // Initial draw
+        drawSquare();
+
+        // Toggle panel visibility
+        function togglePanel() {
+            const isVisible = controlPanel.classList.toggle('visible');
+            disclosure.classList.toggle('open', isVisible);
+            disclosure.setAttribute('aria-expanded', isVisible);
+        }
+
+        disclosure.addEventListener('click', togglePanel);
+        disclosure.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                togglePanel();
+            }
+        });
+
+        // Update opacity on slider input
+        slider.addEventListener('input', (e) => {
+            currentOpacity = parseFloat(e.target.value);
+            opacityValue.textContent = currentOpacity.toFixed(2);
+            drawSquare();
+        });
+    </script>
+</body>
+</html>

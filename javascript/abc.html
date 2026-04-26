@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Square with Opacity Control</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        
+        canvas {
+            border: 1px solid #222;
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(40, 40, 40, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 0;
+            border-radius: 8px;
+            color: #fff;
+            z-index: 100;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            display: inline-block;
+            margin: 0;
+        }
+        
+        .disclosure-triangle {
+            cursor: pointer;
+            padding: 10px 14px;
+            list-style: none;
+            list-style-type: none;
+            display: flex;
+            align-items: left;
+            justify-content: left;
+            user-select: none;
+            border-radius: 8px 8px 0 0;
+            transition: background 0.2s;
+        }
+        
+        .disclosure-triangle:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        
+        .disclosure-triangle svg {
+            width: 20px;
+            height: 20px;
+            fill: #fff;
+            transition: transform 0.2s ease;
+        }
+        
+        /* Rotate triangle when panel is open */
+        .control-panel[open] .disclosure-triangle svg {
+            transform: rotate(90deg);
+        }
+        
+        /* Hide default browser markers */
+        .disclosure-triangle::marker,
+        .disclosure-triangle::-webkit-details-marker {
+            display: none;
+        }
+        
+        .panel-content {
+            padding: 12px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-panel label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        input[type="range"] {
+            width: 140px;
+            cursor: pointer;
+            accent-color: #ff4444;
+        }
+        
+        .value-display {
+            font-size: 12px;
+            width: 35px;
+            text-align: right;
+            font-family: monospace;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+
+    <details id="controlPanel" class="control-panel">
+        <summary class="disclosure-triangle">
+            <svg viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+            </svg>
+        </summary>
+        <div class="panel-content">
+            <label for="opacitySlider">Square Transparency</label>
+            <div class="slider-container">
+                <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
+                <span id="opacityValue" class="value-display">1.00</span>
+            </div>
+        </div>
+    </details>
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('opacitySlider');
+        const opacityValue = document.getElementById('opacityValue');
+
+        let currentOpacity = 1;
+        const squareSize = 100;
+        const x = (canvas.width - squareSize) / 2;
+        const y = (canvas.height - squareSize) / 2;
+
+        function drawSquare() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = currentOpacity;
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(x, y, squareSize, squareSize);
+            ctx.globalAlpha = 1.0; // Reset context alpha
+        }
+
+        // Initial draw
+        drawSquare();
+
+        // Update opacity on slider input
+        slider.addEventListener('input', (e) => {
+            currentOpacity = parseFloat(e.target.value);
+            opacityValue.textContent = currentOpacity.toFixed(2);
+            drawSquare();
+        });
+    </script>
+</body>
+</html>

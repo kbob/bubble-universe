@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Red Square on Canvas</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            /* Optional: subtle outline to visualize canvas boundaries */
+            outline: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const squareSize = 100;
+        // Calculate top-left position to center the square
+        const x = (canvas.width - squareSize) / 2;
+        const y = (canvas.height - squareSize) / 2;
+        
+        ctx.fillStyle = 'red';
+        ctx.fillRect(x, y, squareSize, squareSize);
+    </script>
+</body>
+</html>

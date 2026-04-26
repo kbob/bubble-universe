@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGPU Red Square</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        #myCanvas {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <script>
+        async function main() {
+            // Get the canvas element
+            const canvas = document.getElementById('myCanvas');
+            
+            // Set canvas to full window size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            resizeCanvas();
+            
+            // Request WebGPU context
+            const gpu = navigator.gpu;
+
+            if (!gpu) {
+                alert("WebGPU is not supported in your browser!");
+                throw new Error("WebGPU not supported");
+            }
+
+            const adapter = await gpu.requestAdapter({ powerPreference: "high-performance" });
+            const device = await adapter.requestDevice();
+            const context = canvas.getContext('webgpu');
+            // const format = 'bgra8unorm';
+            const format = gpu.getPreferredCanvasFormat();
+            context.configure({device, format: format});
+
+            // Create swap chain
+            function createSwapChain() {
+                return device.createSwapChain({
+                    canvas,
+                    format,
+                    width: canvas.width,
+                    height: canvas.height,
+                    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+                    presentMode: 'faster',
+                    alphaMode: 'opaque'
+                });
+            }
+
+            // let swapChain = createSwapChain();
+
+            // Vertex buffer data
+            const vertexData = new Float32Array([
+                // Positions (x, y) | Colors (r, g, b, a)
+                -0.5, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                0.5, 0.5, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                -0.5, -0.5, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0
+            ]);
+
+            const vertexBuffer = device.createBuffer({
+                size: vertexData.length * 4,
+                usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+                mappedAtCreation: true,
+            });
+
+            vertexBuffer.mappedArray.set(vertexData);
+            vertexBuffer.unmap();
+
+            // Vertex shader
+            const vsSource = `
+                struct VSInput {
+                    @location(0) pos : vec2<f32>;
+                    @location(1) color : vec4<f32>;
+                };
+
+                struct VSOutput {
+                    @builtin(position) position : vec4<f32>;
+                    @location(0) fragColor : vec4<f32>;
+                };
+
+                @vertex
+                fn main(input: VSInput) -> VSOutput {
+                    var output : VSOutput;
+                    output.position = vec4<f32>(input.pos, 0.0, 1.0);
+                    output.fragColor = input.color;
+                    return output;
+                }
+            `;
+
+            // Fragment shader
+            const fsSource = `
+                @fragment
+                fn main(@location(0) fragColor : vec4<f32>) -> @location(0) vec4<f32> {
+                    return fragColor;
+                }
+            `;
+
+            // Create shaders and pipeline
+            const vsModule = device.createShaderModule({ code: vsSource });
+            const fsModule = device.createShaderModule({ code: fsSource });
+
+            const renderPipeline = device.createRenderPipeline({
+                vertex: {
+                    module: vsModule,
+                    entryPoint: 'main',
+                    buffers: [{
+                        arrayStride: 8 * 4, // 6 floats per vertex (2 pos + 4 color)
+                        attributes: [
+                            { offset: 0, shaderLocation: 0, format: 'float32x2' },
+                            { offset: 8, shaderLocation: 1, format: 'float32x4' }
+                        ]
+                    }]
+                },
+                fragment: {
+                    module: fsModule,
+                    entryPoint: 'main',
+                    targets: [{
+                        format
+                    }]
+                },
+                primitive: {
+                    topology: 'triangle-list'
+                }
+            });
+
+            // Create command queue
+            const commandQueue = device.createCommandQueue();
+
+            function draw() {
+                const commandBuffer = commandQueue.createCommandBuffer();
+                const passEncoder = commandBuffer.beginRenderPass({
+                    colorAttachments: [{
+                        // view: swapChain.getCurrentTexture().createView(),
+                        view: context.getCurrentTexture(),
+                        resolveTarget: null,
+                        loadOp: 'clear',
+                        storeOp: 'store'
+                    }]
+                });
+
+                // Clear the background to black
+                passEncoder.setClearColor([0, 0, 0, 1]);
+
+                // Set up pipeline and buffers
+                passEncoder.setViewport(0, 0, canvas.width, canvas.height, 0, 1);
+                passEncoder.setScissorRect(0, 0, canvas.width, canvas.height);
+
+                passEncoder.setPipeline(renderPipeline);
+                passEncoder.bindVertexBuffer(0, vertexBuffer);
+                passEncoder.draw(4); // Draw all 4 vertices (2 triangles)
+
+                passEncoder.end();
+                commandQueue.submit([commandBuffer]);
+
+                // swapChain.present();
+            }
+
+            function handleResize() {
+                resizeCanvas();
+                
+                // Rebuild the swap chain
+                // swapChain = createSwapChain();
+
+                // Redraw
+                draw();
+            }
+
+            window.addEventListener('resize', handleResize);
+
+            // Initial draw
+            draw();
+        }
+        main();
+        </script>
+</body>
+</html>
