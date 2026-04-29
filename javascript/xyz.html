@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Red Square</title>
+    <style>
+        /* Center the canvas on the page */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: white;
+        }
+
+        #myCanvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="500" height="500"></canvas>
+
+    <script>
+        // Get the canvas context
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Define square properties
+        const squareSize = 100;  // Size of the square in pixels
+        const x = (canvas.width - squareSize) / 2;  // Center horizontally
+        const y = (canvas.height - squareSize) / 2; // Center vertically
+        const fillColor = 'red';
+        const strokeColor = 'black';
+
+        // Draw the square function
+        function drawSquare() {
+            // Set the fill color to red
+            ctx.fillStyle = fillColor;
+            
+            // Begin a new path
+            ctx.beginPath();
+            
+            // Define the square coordinates
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + squareSize, y);
+            ctx.lineTo(x + squareSize, y + squareSize);
+            ctx.lineTo(x, y + squareSize);
+            ctx.closePath();  // Close the path
+            
+            // Fill the square with red
+            ctx.fill();
+            
+            // Set stroke style to black and draw border
+            ctx.strokeStyle = strokeColor;
+            ctx.stroke();
+        }
+
+        // Call the function when the window loads
+        window.addEventListener('load', drawSquare);
+    </script>
+</body>
+</html>

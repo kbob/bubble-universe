@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Red Square</title>
+    <style>
+        /* Full-screen canvas */
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        #myCanvas {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('myCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            // Set canvas dimensions to window size
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Calculate square size as half of the smaller dimension
+            const minDim = Math.min(window.innerWidth, window.innerHeight);
+            const squareSize = minDim / 2;
+
+            // Calculate square position (centered)
+            const x = (canvas.width - squareSize) / 2;
+            const y = (canvas.height - squareSize) / 2;
+
+            return {
+                x,
+                y,
+                squareSize
+            };
+        }
+
+        function drawSquare(x, y, squareSize) {
+            // Clear the canvas with black background
+            ctx.fillStyle = 'black';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw red square
+            ctx.fillStyle = 'red';
+            ctx.strokeStyle = 'black';
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + squareSize, y);
+            ctx.lineTo(x + squareSize, y + squareSize);
+            ctx.lineTo(x, y + squareSize);
+            ctx.closePath();
+
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        function handleResize() {
+            const { x, y, squareSize } = resizeCanvas();
+            drawSquare(x, y, squareSize);
+        }
+
+        // Initial setup and drawing
+        window.addEventListener('load', () => {
+            const { x, y, squareSize } = resizeCanvas();
+            drawSquare(x, y, squareSize);
+        });
+
+        // Handle window resizing
+        window.addEventListener('resize', handleResize);
+    </script>
+</body>
+</html>

@@ -28,6 +28,16 @@
             position: fixed;
             top: 0;
             left: 0;
+            background: transparent;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
+            margin: 0;
+            padding: 0;
+            z-index: 100;
+        }
+
+        .control-panel[open] {
             background-color: rgba(40, 40, 40, 0.85);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -36,28 +46,34 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-left: none;
             border-top: none;
+        }
+
+        details, summary {
             margin: 0;
             padding: 0;
-            display: inline-block;
-            z-index: 100;
+        }
+
+        summary {
+            list-style: none;
+        }
+        
+        summary::-webkit-details-marker {
+            display: none;
         }
 
         .disclosure-triangle {
             cursor: pointer;
             padding: 8px;
-            list-style: none;
             display: flex;
             align-items: center;
-            /* justify-content: center; */
+            justify-content: left;
             user-select: none;
-            margin: 0;
-            background: none;
+            background: transparent;
             border: none;
         }
 
-        .disclosure-triangle::marker,
-        .disclosure-triangle::-webkit-details-marker {
-            display: none;
+        .disclosure-triangle:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .disclosure-triangle svg {
@@ -92,6 +108,37 @@
             gap: 10px;
         }
 
+        .reset-btn {
+            background: none;
+            border: none;
+            padding: 4px;
+            cursor: pointer;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .reset-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .reset-btn:disabled {
+            background: transparent;
+        }
+
+        .reset-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: #fff;
+        }
+
         input[type="range"] {
             width: 140px;
             cursor: pointer;
@@ -119,6 +166,11 @@
         <div class="panel-content">
             <label for="opacitySlider">Square Transparency</label>
             <div class="slider-container">
+                <button id="resetBtn" class="reset-btn" aria-label="Reset opacity to 1.0" disabled>
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+                    </svg>
+                </button>
                 <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
                 <span id="opacityValue" class="value-display">1.00</span>
             </div>
@@ -130,6 +182,7 @@
         const ctx = canvas.getContext('2d');
         const slider = document.getElementById('opacitySlider');
         const opacityValue = document.getElementById('opacityValue');
+        const resetBtn = document.getElementById('resetBtn');
 
         let currentOpacity = 1;
         const squareSize = 100;
@@ -151,15 +204,29 @@
             ctx.globalAlpha = 1.0;
         }
 
-        // Handle window resizing
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas(); // Initial setup
+        function updateResetState() {
+            resetBtn.disabled = currentOpacity == 1;
+        }
 
-        // Update opacity on slider input
+        // Initial setup & resize handling
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Slider input handler
         slider.addEventListener('input', (e) => {
             currentOpacity = parseFloat(e.target.value);
             opacityValue.textContent = currentOpacity.toFixed(2);
             drawSquare();
+            updateResetState();
+        });
+
+        // Reset button handler
+        resetBtn.addEventListener('click', () => {
+            currentOpacity = 1;
+            slider.value = 1;
+            opacityValue.textContent = '1.00';
+            drawSquare();
+            updateResetState();
         });
     </script>
 </body>
