@@ -64,8 +64,13 @@ struct InterStage {
 }
 
 fn classic_color(in: InterStage) -> vec4f {
-    let r = in.texcoord.x * (200f / 255f);
-    let g = in.texcoord.y * (200f / 255f);
+    let U = uniforms;
+    let nf = f32(U.seq_count);
+    let mf = f32(U.seq_length);
+    let i = u32(in.texcoord.x * nf);
+    let j = u32(in.texcoord.y * mf);
+    let r = (f32(i) / nf) * (200f / 255f);
+    let g = (f32(j) / mf) * (200f / 255f);
     let b = 99f / 255f;
     let a = 1f;
     return vec4f(r, g, b, a);
