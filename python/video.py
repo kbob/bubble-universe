@@ -7,8 +7,9 @@ EMIT_PNGS = True
 
 # To convert the PNG images into a video, use this command.
 #
-#    $ ffmpeg -framerate 60 -i image-%04d.png video.mp4
-
+#    $ ffmpeg -framerate 60 -i image-%05d.png video.mp4
+#
+# For better quality, add `-crf 13`.
 
 frame_no = 0
 
@@ -48,7 +49,7 @@ class VideoOutputFile:
             global frame_no
             frame_no += 1
             image = Image.fromarray(array, 'RGBA')
-            image.save(f'image-{frame_no:04}.png')
+            image.save(f'image-{frame_no:05}.png')
 
     def close(self):
         if EMIT_MP4:
@@ -57,4 +58,4 @@ class VideoOutputFile:
             self.container.close()
             print(f'Video saved to {self.filename}')
         if EMIT_PNGS:
-            print(f'Images saved to image-0000.png .. image-{frame_no - 1:04}.png')
+            print(f'Images saved to image-00000.png .. image-{frame_no - 1:05}.png')

@@ -20,9 +20,22 @@ class _classproperty:
 ## Resource
 ## abstract base for resource classes
 
+def type_summary(obj):
+    """return type and list of interesting superclasses"""
+    from inspect import getmro
+    from abc import ABC
+    return f'''{type(obj).__name__} ({
+        ' '.join(
+            t.__name__
+            for t in getmro(type(obj))[1:]
+            if t not in {object, ABC}
+        )
+    })'''
+
 class Resource(ABC):
 
     def __init__(self, name):
+        # print(f'{name}: {type_summary(self)}')
         self.name = name
 
     @abstractmethod
