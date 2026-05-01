@@ -1,0 +1,153 @@
+#!/usr/bin/env python
+
+from dataclasses import dataclass, field
+from enum import auto, Enum
+import json
+from pprint import pprint
+import sys
+
+
+# class Mode(Enum):
+#     RESOURCES = auto()
+#     PASSES = auto()
+#     P_PARAMETERS = auto()
+#     P_RESOURCES = auto()
+
+#     @classmethod
+#     def from_string(cls, s):
+#         ms = cls.mode_strings()
+#         if s in ms:
+#             return ms[s]
+#         return None
+
+#     @classmethod
+#     def mode_strings(cls):
+#         return {
+#             'Resources': cls.RESOURCES,
+#             'Passes': cls.PASSES,
+#             '    Parameters': cls.P_PARAMETERS,
+#             '    Resources': cls.P_RESOURCES,
+#         }
+
+
+@dataclass
+class Resource:
+    name: str
+    type: str
+
+    @classmethod
+    def from_string(cls, s):
+        (name, type_) = s.strip().split(':')
+        type_ = type_.strip()
+        return cls(name, type_)
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(d['name'], d['type'])
+
+@dataclass
+class Parameter:
+    name: str
+    type: str
+    default: str
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            name=d['name'],
+            type=d['type'],
+            default=d['default'],
+        )
+
+        
+@dataclass
+class Pass:
+    name: str
+    type: str
+    supers: list[str]
+    parameters: list = field(default_factory=list)
+    resources: list = field(default_factory=list)
+    internal_resources: list = field(default_factory=list)
+    subpasses: list = field(default_factory=list)
+
+    @classmethod
+    def from_string(cls, s):
+        (name, desc) = s.strip().split(':')
+        (type_, rest) = desc.strip().split(' ', 1)
+        supers = rest.strip('()').split()
+        return cls(name, type_, supers)
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(
+            name=d['name'],
+            type=d['type'],
+            supers=d['supers'],
+            parameters=([
+                    Parameter.from_dict(par)
+                    for par in d['parameters']
+                ]
+                if 'parameters' in d else []),
+            resources=d.get('resources', []),
+            subpasses=[
+                Pass.from_dict(spd)
+                for spd in d.get('subpasses', [])
+            ],
+        )
+
+def read_stream(f):
+    j = json.loads(f.read())
+    resources = [
+        Resource.from_dict(res)
+        for res in j['resources']
+    ]
+
+    passes = [
+        Pass.from_dict(pass_)
+        for pass_ in j['passes']
+    ]
+    return (resources, passes)
+
+
+# look for pass and resource name collisions
+# look for parameters that aren't propagated up (???)
+# get full list of top level parameters
+def analyze(resources, passes):
+    print('Analyzing...')
+
+    # check for name collisions
+    r_names = set()
+    for name in [res.name for res in resources]:
+        if name in r_names:
+            print(f'Duplicate resource name {name!r}')
+        r_names.add(name)
+
+    p_names = set()
+    for name in [pas.name for pas in passes]:
+        if name in p_names:
+            print(f'Duplicate pass name {name!r}')
+        p_names.add(name)
+
+    # look for unexposed parameters
+    all_param = set()
+    def add_pass_params(pass_):
+        for par in pass_.parameters:
+            all_param.add(par.name)
+    for pass_ in passes:
+        add_pass_params(pass_)
+        for sub in pass_.subpasses:
+            add_pass_params(sub)
+    pprint(all_param)
+
+def main(argv):
+    if len(argv) == 1:
+        (resources, passes) = read_stream(sys.stdin)
+    elif len(argv) == 2:
+        with open(argv[1]) as f:
+            (resources, passes) = read_stream(f)
+    else:
+        return f'usage: {argv[0]} [file]'
+    analyze(resources, passes)
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv))

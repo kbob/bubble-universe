@@ -17,6 +17,7 @@ class RenderGraph:
                                   f'is missing resource {r.name!r}')
                 if resource not in resources:
                     resources[resource] = resource.instantiate(device)
+        self.resources = resources
 
         # Instantiate all passes
         self.passes = {}
@@ -34,3 +35,13 @@ class RenderGraph:
         frame += 1
         command_buffer = encoder.finish()
         device.queue.submit([command_buffer])
+
+    def description(self):
+        return {
+            'resources': [r.description() for r in self.resources],
+            'passes': [p.description() for p in self.passes],
+        }
+
+    def describe(self):
+        import json
+        print(json.dumps(self.description(), indent=2))

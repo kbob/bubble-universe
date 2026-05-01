@@ -172,11 +172,11 @@ class Bubbler(ParameterizedMixIn):
                 .attach_output(self.colormap)
         )
         self.background_A = (
-            BackgroundPass('backgrounds A')
+            BackgroundPass('background A')
                 .attach_output(self.background_image_A)
         )
         self.background_B = (
-            BackgroundPass('backgrounds B')
+            BackgroundPass('background B')
                 .attach_output(self.background_image_B)
         )
         self._active_background = self.background_A

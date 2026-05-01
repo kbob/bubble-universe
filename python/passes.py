@@ -3,6 +3,7 @@ from enum import Enum
 import os.path
 from typing import NamedTuple
 
+from parameterized import ParameterizedMixIn
 import resources
 import wgpu
 
@@ -176,6 +177,30 @@ class Pass(ABC):
         with open(path) as f:
             return f.read()
 
+    def description(self):
+        from inspect import getmro
+        desc = {
+            'name': self.name,
+            'type': type(self).__name__,
+            'supers': [
+                t.__name__
+                for t in getmro(type(self))[1:]
+                if t not in {object, ABC}
+            ],
+        }
+        if hasattr(self, '_parameters'):
+            desc['parameters'] = self.parameter_descriptions()
+        resources = self.resources()
+        if resources:
+            desc['resources'] = [
+                {
+                    'name': r.name,
+                    'type': type(r).__name__,
+                    'rtype': type(r.resource).__name__,
+                }
+                for r in resources
+            ]
+        return desc
 
 class ComputePass(Pass):
     
@@ -291,6 +316,7 @@ class Subgraph(Pass):
 
         # Find and instantiate all bound resources
         resources = {r: None for r in external_resources}
+        self.internal_resources = []
         for pass_ in passes:
             for r in pass_.resources():
                 resource = r.resource
@@ -298,8 +324,20 @@ class Subgraph(Pass):
                                   f'is missing resource {r.name!r}')
                 if resource not in resources:
                     resources[resource] = resource.instantiate(device)
+                    self.internal_resources.append(resource)
 
         # Instantiate all passes
         self.passes = {}
         for pass_ in passes:
             self.passes[pass_] = pass_.instantiate(device)
+
+    def description(self):
+        desc = super().description()
+        if self.internal_resources:
+            desc['internal_resources'] = [
+                r.description()
+                for r in self.internal_resources
+            ]
+        if self.passes:
+            desc['subpasses'] = [p.description() for p in self.passes]
+        return desc

@@ -49,6 +49,12 @@ class Resource(ABC):
     def make_label(self, tag):
         return f'{self.name} {tag}'
 
+    def description(self):
+        return {
+            'name': self.name,
+            'type': type(self).__name__,
+        }
+
 
 ## ##  ##   ##    ##     ##      ##       ##      ##     ##    ##   ##  ## ##
 ## StorageBuffer

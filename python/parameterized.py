@@ -8,7 +8,7 @@
 
 """
 
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, fields, is_dataclass, MISSING
 
 
 class ParameterizedMixIn:
@@ -30,6 +30,18 @@ class ParameterizedMixIn:
             value = field.type(v)
             setattr(self._parameters, k, value)
         return self
+
+    def parameter_descriptions(self):
+        desc = []
+        for f in fields(self.Parameters):
+            pd = {
+                'name': f.name,
+                'type': f.type.__name__,
+            }
+            if f.default != MISSING:
+                pd['default'] = f.default
+            desc.append(pd)
+        return desc
 
 
 # Unit Test
