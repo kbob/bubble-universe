@@ -6,7 +6,7 @@ struct InterStage {
     @location(0) texcoord: vec2f,
 };
 
-@vertex fn vertex_shadder(
+@vertex fn vertex_shader(
     @builtin(vertex_index) vertex_index: u32,
 ) -> InterStage {
 
