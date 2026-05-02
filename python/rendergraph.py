@@ -1,8 +1,5 @@
-import passes
 import resources
 
-
-frame = 0
 
 class RenderGraph:
 
@@ -25,14 +22,11 @@ class RenderGraph:
             self.passes[pass_] = pass_.instantiate(device)
 
     def execute(self, device):
-        global frame
-
         encoder = device.create_command_encoder(
             label='rendergraph command encoder'
         )
         for pass_ in self.passes:
             pass_.execute(device, encoder)
-        frame += 1
         command_buffer = encoder.finish()
         device.queue.submit([command_buffer])
 
