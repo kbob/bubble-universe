@@ -12,6 +12,8 @@ shader_source = '''
 
     struct Uniforms {
         background_amount: f32,
+        trails_amount: f32,
+        particles_amount: f32,
         overlay_amount: f32,
         overlay_origin: vec2f,
         overlay_size: vec2f,
@@ -59,11 +61,11 @@ shader_source = '''
 
         var rgb = U.background_amount * bg.rgb;
 
-        let ta = clamp(trails.a, 0f, 1f);
-        rgb = trails.rgb + (1f - ta) * rgb;
+        let ta = clamp(U.trails_amount * trails.a, 0f, 1f);
+        rgb = mix(rgb, trails.rgb, ta);
 
-        let pa = clamp(particles.a, 0f, 1f);
-        rgb = particles.rgb + (1f - pa) * rgb;
+        let pa = clamp(U.particles_amount * particles.a, 0f, 1f);
+        rgb = mix(rgb, particles.rgb, pa);
 
         // Is this fragment in the overlay rectangle?
         let oc: vec2<bool> = in.position.xy >= U.overlay_origin;
@@ -87,10 +89,14 @@ class CompositorPass(RenderPass, ParameterizedMixIn):
     @dataclass
     class Parameters:
         background_amount: float = Defaults.BACKGROUND_AMOUNT
+        trails_amount: float = Defaults.TRAILS_AMOUNT
+        particles_amount: float = Defaults.PARTICLES_AMOUNT
         overlay_amount: float = Defaults.OVERLAY_AMOUNT
 
     class _Uniforms(Uniforms):
         background_amount: f32 = Defaults.BACKGROUND_AMOUNT
+        trails_amount: f32 = Defaults.TRAILS_AMOUNT
+        particles_amount: f32 = Defaults.PARTICLES_AMOUNT
         overlay_amount: f32 = Defaults.OVERLAY_AMOUNT
         overlay_origin: vec2f
         overlay_size: vec2f
@@ -180,6 +186,8 @@ class CompositorPass(RenderPass, ParameterizedMixIn):
 
         uniforms = self._Uniforms(
             background_amount=self._parameters.background_amount,
+            trails_amount=self._parameters.trails_amount,
+            particles_amount=self._parameters.particles_amount,
             overlay_amount=self._parameters.overlay_amount,
             overlay_origin=oorigin,
             overlay_size=osize,

@@ -5,7 +5,6 @@ from colors import ColormapPass, Theme
 from compositor import CompositorPass
 from constants import *
 from copier import CopyPass
-from drawer import DrawingPass
 from drawer_mapped import ColorMappedDrawingPass
 from light_bloom import BloomSubgraph
 from mixer import MixerPass
@@ -34,6 +33,8 @@ class Bubbler(ParameterizedMixIn):
         trail_persistence: float = Defaults.TRAIL_PERSISTENCE
         trail_diffusion: float = Defaults.TRAIL_DIFFUSION
         background_amount: float = Defaults.BACKGROUND_AMOUNT
+        trails_amount: float = Defaults.TRAILS_AMOUNT
+        particles_amount: float = Defaults.PARTICLES_AMOUNT
         overlay_amount: float = Defaults.OVERLAY_AMOUNT
         bloom_amount: float = Defaults.BLOOM_AMOUNT
         bloom_size: float = Defaults.BLOOM_SIZE
@@ -325,6 +326,8 @@ class Bubbler(ParameterizedMixIn):
             )
             self.compositor.update_parameters(
                 background_amount=self._parameters.background_amount,
+                trails_amount=self._parameters.trails_amount,
+                particles_amount=self._parameters.particles_amount,
                 overlay_amount=self._parameters.overlay_amount,
             )
             self.bloomer.update_parameters(
