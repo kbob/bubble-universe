@@ -14,14 +14,18 @@ class ParticleMotionPass(ComputePass, ParameterizedMixIn):
     class Parameters:
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
-        t: float = 0
+        s_blocks: int = Defaults.S_BLOCKS
         r: float = Defaults.R
+        s: float = Defaults.S
+        t: float = 0
 
     class _Uniforms(Uniforms):
         seq_count: u32 = Defaults.SEQ_COUNT
         seq_length: u32 = Defaults.SEQ_LENGTH
-        t: f32 = 0
+        s_blocks: u32 = Defaults.S_BLOCKS
         r: f32 = Defaults.R
+        s: f32 = Defaults.S
+        t: f32 = 0
 
     def __init__(self, name='particles'):
         super().__init__(name)
@@ -59,8 +63,10 @@ class ParticleMotionPass(ComputePass, ParameterizedMixIn):
         uniforms = self._Uniforms(
             seq_count=self._parameters.seq_count,
             seq_length=self._parameters.seq_length,
-            t=self._parameters.t,
+            s_blocks=self._parameters.s_blocks,
             r=self._parameters.r,
+            s=self._parameters.s,
+            t=self._parameters.t,
         )
         self.uniform_buffer.write_buffer(device, uniforms.as_data())
 

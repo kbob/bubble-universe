@@ -26,9 +26,11 @@ class Bubbler(ParameterizedMixIn):
         theme: Theme = Theme(Defaults.THEME)
         seq_count: int = Defaults.SEQ_COUNT
         seq_length: int = Defaults.SEQ_LENGTH
+        s_blocks: int = Defaults.S_BLOCKS
         fps: float = MAX_FPS
         speed: float = Defaults.SPEED
         r: float = Defaults.R
+        s: float = Defaults.S
         particle_size: float = Defaults.PARTICLE_SIZE
         trail_persistence: float = Defaults.TRAIL_PERSISTENCE
         trail_diffusion: float = Defaults.TRAIL_DIFFUSION
@@ -307,8 +309,10 @@ class Bubbler(ParameterizedMixIn):
         self.particles.update_parameters(
             seq_count=self._parameters.seq_count,
             seq_length=self._parameters.seq_length,
-            t=self._time,
+            s_blocks=self._parameters.s_blocks,
             r=self._parameters.r,
+            s=self._parameters.s,
+            t=self._time,
         )
         self.drawer.update_parameters(
             seq_count=self._parameters.seq_count,

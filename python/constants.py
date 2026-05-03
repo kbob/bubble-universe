@@ -17,6 +17,8 @@ class Defaults:
     SEQ_LENGTH = 100
     SPEED = tau / 12.5          # radians/sec
     R = tau / 235               # radians
+    S = 1                       # radians
+    S_BLOCKS = 1
     PARTICLE_SIZE = 3           # pixels normalized to CANVAS_SIZE
     CANVAS_SIZE = (675, 540)
     VIDEO_FILE = 'temp.mp4'
