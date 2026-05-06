@@ -60,6 +60,9 @@ class ParticleMotionPass(ComputePass, ParameterizedMixIn):
 
     def execute(self, device, encoder):
 
+        if self._parameters.seq_count == 0 or self._parameters.seq_length == 0:
+            return
+
         uniforms = self._Uniforms(
             seq_count=self._parameters.seq_count,
             seq_length=self._parameters.seq_length,
