@@ -15,7 +15,6 @@
     + &#x2705; diffuse trails
 * colors
   - &#x2705; classic RGB
-  - ~~HSV colors~~
   - &#x2705; animated colormap
   - &#x2705; color/gradient the background outside the circle
   - color schemes
@@ -42,6 +41,38 @@
     time?  Maybe just use whatever time step is current when the note
     is triggered.
 
+# Issues
+
+* Javascript image is too dark.
+  + exponentiate by 1/2.2 in tone mapper
+  + switch drawing attachment's blend mode to 'blend'
+* Javascript colormap does not resize.
+* Javascript theme switching does not go to 100%.
+* Should make the control panel more compact.
+* Indicator when control group has a changed value.
+
+# Features
+
+* Python needs a full screen command argument.
+
+      $ bubbler --full-screen ...
+
+* Python needs CLI to set all the parameters
+
+      $ bubbler --parameters=particle-size=0.8,seq_count=900
+      $ bubbler list-parameters
+
+* Rotate the whole image.
+
+* Presets/Demo Mode
+
+* Particle Culling
+  - number to keep
+  - velocity -1..+1 cycles/sec
+  - stagger (skew) -1..+1
+  - filter order 0..3
+
+  - remove from triad colormap
 
 ## Internal changes
 

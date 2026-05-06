@@ -46,6 +46,18 @@ Vary `k1` and `k2` as desired.
   - trail persistence: 0.99
   - trail diffusion: 1
 
+# Colored Smoke
+
+    bubbler.update_parameters(
+        theme=Theme.TRIAD,
+        seq_count=24,
+        seq_length=80,
+        speed=0.9,
+        particle_size=4,
+        trail_persistence=0.995,
+        trail_diffusion=1.0,
+    )
+
 # Fine detail thing
 
 ### parameters
@@ -58,6 +70,17 @@ Vary `k1` and `k2` as desired.
   - trail_diffusion = 0
   - theme = Triad
 
+        bubbler.update_parameters(
+            seq_count=3000,
+            speed=0.080,
+            s=0.004,
+            s_blocks=120,
+
+            theme=Theme.TRIAD,
+            particle_size=0.7,
+            trail_persistence=0.80,
+        )
+      
 ### `colors.wgsl`
 
   - HUE_SPREAD = 0.2
@@ -99,6 +122,12 @@ This is [&#x1F9F5;32](https://makertube.net/w/nHS1HyY1gGMCvDdGMzX8x8).
 
   - `let fi = 0.004 * f32(i);`
 
-🧵
-thread
-Unicode: U+1F9F5, UTF-8: F0 9F A7 B5
+        bubbler.update_parameters(
+            seq_count=400,
+            speed=0.251,
+            s=0.004,
+
+            theme=Theme.TRIAD,
+            particle_size=1.0,
+            trail_persistence=0.97,
+        )
