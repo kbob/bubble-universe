@@ -3,7 +3,6 @@ from enum import Enum
 import os.path
 from typing import NamedTuple
 
-from parameterized import ParameterizedMixIn
 import resources
 import wgpu
 
