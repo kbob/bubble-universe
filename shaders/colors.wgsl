@@ -94,7 +94,7 @@ fn midnight_color(in: InterStage) -> vec4f {
 
 fn fiesta_color(in: InterStage) -> vec4f {
     let U = uniforms;
-    let i = i32(in.texcoord.x * f32(U.seq_length) + 0.5);
+    let i = u32(in.position.x * f32(U.seq_count));
     let h = (INV_PHI * f32(i)) % 1f;
     let s = 1f;
     let v = 1f;
@@ -109,7 +109,7 @@ fn easter_color(in: InterStage) -> vec4f {
     if grass {
         return vec4f(0f, 0.3, 0f, 1f);
     } else {
-        let i = i32(in.texcoord.x * f32(U.seq_length) + 0.5);
+        let i = u32(in.position.x * f32(U.seq_count));
         let h = (INV_PHI * f32(i)) % 1f;
         let s = 0.7;
         let v = 1f;
@@ -142,8 +142,7 @@ fn triad_color(in: InterStage) -> vec4f {
     let SEQ_WIDTH = 0.4;
 
     let n = U.seq_count;
-    // let i = u32(in.texcoord.x * f32(n));
-    let i = u32(in.position.x);
+    let i = u32(in.position.x * f32(n));
 
     var h = 1f * U.t / TAU + HUE_SPREAD * in.texcoord.x;
     // split hues into three bands
