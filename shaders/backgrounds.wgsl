@@ -315,7 +315,7 @@ fn fiesta_background(in: InterStage) -> vec4f {
     if fract(sx * 50f + 0.7) < 0.4 && fract((fy - droop_y) * 15f) < 0.4 {
         // holes in flags
         in_sky = true;
-    } 
+    }
 
     // in_bubble - 1 inside the bubble, 0 outside
     let in_bubble = smoothstep(1.05, 1f, dot(in.xy, in.xy));
@@ -504,7 +504,7 @@ fn psrnoise2(x: vec2<f32>, p: vec2<f32>, alpha: f32) -> f32
 	var x0: vec2<f32>;
 	var x1: vec2<f32>;
 	var x2: vec2<f32>;
-	
+
 	uv = vec2<f32>(x.x+x.y*0.5, x.y); // So far, so good
 	i0 = floor(uv);  // modf() is not a modulo operation!
 	f0 = uv - i0;
@@ -588,7 +588,7 @@ fn srnoise2(x: vec2<f32>, alpha: f32) -> f32
 	var x0: vec2<f32>;
 	var x1: vec2<f32>;
 	var x2: vec2<f32>;
-	
+
 	uv = vec2<f32>(x.x+x.y*0.5, x.y);
 	i0 = floor(uv);
 	f0 = uv - i0;

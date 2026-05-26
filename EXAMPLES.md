@@ -131,3 +131,13 @@ This is [&#x1F9F5;32](https://makertube.net/w/nHS1HyY1gGMCvDdGMzX8x8).
             particle_size=1.0,
             trail_persistence=0.97,
         )
+
+# Cloud chamber
+
+    bubbler.update_parameters(
+        speed=65 / tau,     # ~10.35 rad/sec
+        theme=Theme.BONE,
+        particle_size=1.2,
+        trail_persistence=0.97,
+        trail_diffusion=1.00,
+    )

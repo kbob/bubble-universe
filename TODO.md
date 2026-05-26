@@ -29,8 +29,8 @@
   - rotation
   - map points to 3D somehow
 * UI (Javascript)
-  - replace alert box with window
-  - sliders and buttons
+  - &#x2705; replace alert box with window
+  - &#x2705; sliders and buttons
   - hide the cursor when it's inactive.  (css: { cursor: none; })
 * Audio
   - ZOMG!  Each particle sequence could totally be an oscilloscope
@@ -43,13 +43,13 @@
 
 # Issues
 
-* Javascript image is too dark.
-  + exponentiate by 1/2.2 in tone mapper
-  + switch drawing attachment's blend mode to 'blend'
-* Javascript colormap does not resize.
-* Javascript theme switching does not go to 100%.
-* Should make the control panel more compact.
-* Indicator when control group has a changed value.
+* &#x2705; Javascript image is too dark.
+  + &#x2705; exponentiate by 1/2.2 in tone mapper
+  + &#x274c; switch drawing attachment's blend mode to 'blend'
+* &#x2753; Javascript colormap does not resize.
+* &#x2705; Javascript theme switching does not go to 100%.
+* &#x2753; Should make the control panel more compact.
+* &#x2753; Indicator when control group has a changed value.
 
 # Features
 
@@ -69,7 +69,8 @@
 * Particle Culling
   - number to keep
   - velocity -1..+1 cycles/sec
-  - stagger (skew) -1..+1
+  - stagger (skew) -1..+
+  - block size(?)
   - filter order 0..3
 
   - remove from triad colormap
